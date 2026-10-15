@@ -1,0 +1,11 @@
+# Normaliza finales de línea a LF (evita diffs falsos entre Windows y Linux/Mac)
+* text=auto eol=lf
+
+# Binarios
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.zip binary
