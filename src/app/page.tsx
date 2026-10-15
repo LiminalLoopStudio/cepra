@@ -5,6 +5,7 @@ import { cerrarSesion } from "./login/actions";
 const ACCESOS = [
   { href: "/equipos", texto: "Equipos" },
   { href: "/catalogo", texto: "Catálogo" },
+  { href: "/propietarios", texto: "Propietarios" },
 ];
 
 export default async function Home() {

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useRef, useState } from "react";
 import { crearEquipo, type EstadoEquipo } from "../actions";
 
@@ -154,6 +155,9 @@ export function EquipoForm({ tipos, propietarios }: { tipos: Tipo[]; propietario
                 Aún no hay empresas patrocinadoras o prestamistas registradas.
               </span>
             ) : null}
+            <Link href="/propietarios" className="text-xs text-brand hover:underline">
+              Registrar una empresa
+            </Link>
           </label>
 
           <label className="flex flex-col gap-1.5">
