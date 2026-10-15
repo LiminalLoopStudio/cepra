@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUsuario } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { COLOR_ESTADO, ESTADO_FISICO, ESTADO_OPERATIVO, PROPIEDAD } from "@/lib/etiquetas";
+import {
+  COLOR_ESTADO,
+  ESTADO_FISICO,
+  ESTADO_OPERATIVO,
+  PROPIEDAD,
+} from "@/lib/etiquetas";
 
 export const metadata: Metadata = { title: "Equipos" };
 
@@ -22,6 +27,7 @@ type Fila = {
 export default async function EquiposPage() {
   const usuario = await requireUsuario();
   const esAdmin = usuario.rol === "administrador";
+  const puedeImprimir = esAdmin || usuario.rol === "almacenista";
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -41,64 +47,116 @@ export default async function EquiposPage() {
             ← Inicio
           </Link>
           <h1 className="mt-2 text-2xl font-bold">Equipos</h1>
-          <p className="text-sm text-muted">Piezas individuales con su etiqueta QR.</p>
+          <p className="text-sm text-muted">
+            Piezas individuales con su etiqueta QR.
+          </p>
         </div>
-        {esAdmin ? (
-          <Link
-            href="/equipos/nuevo"
-            className="flex h-11 items-center rounded-lg bg-brand px-5 font-semibold text-white"
-          >
-            + Registrar equipo
-          </Link>
-        ) : null}
+        <div className="flex flex-wrap gap-3">
+          {puedeImprimir ? (
+            <Link
+              href="/equipos/etiquetas?estado=por_validar"
+              className="flex h-11 items-center rounded-lg border border-foreground/15 px-5 font-medium hover:border-brand"
+            >
+              Etiquetas por validar
+            </Link>
+          ) : null}
+          {esAdmin ? (
+            <Link
+              href="/equipos/nuevo"
+              className="flex h-11 items-center rounded-lg bg-brand px-5 font-semibold text-white"
+            >
+              + Registrar equipo
+            </Link>
+          ) : null}
+        </div>
       </div>
 
       {error ? (
-        <p className="text-sm text-red-500">No se pudieron cargar los equipos: {error.message}</p>
+        <p className="text-sm text-red-500">
+          No se pudieron cargar los equipos: {error.message}
+        </p>
       ) : equipos.length > 0 ? (
-        <div className="overflow-x-auto rounded-xl border border-foreground/10">
-          <table className="w-full min-w-[760px] text-sm">
-            <thead className="bg-foreground/5 text-left text-xs text-muted">
-              <tr>
-                <th className="px-4 py-2 font-medium">Etiqueta</th>
-                <th className="px-4 py-2 font-medium">Tipo</th>
-                <th className="px-4 py-2 font-medium">Marca / modelo</th>
-                <th className="px-4 py-2 font-medium">Serie</th>
-                <th className="px-4 py-2 font-medium">Propiedad</th>
-                <th className="px-4 py-2 font-medium">Físico</th>
-                <th className="px-4 py-2 font-medium">Estado</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-foreground/10">
-              {equipos.map((e) => (
-                <tr key={e.id}>
-                  <td className="px-4 py-2 font-mono font-medium">{e.etiqueta}</td>
-                  <td className="px-4 py-2">{e.articulo?.nombre ?? "—"}</td>
-                  <td className="px-4 py-2">
-                    {[e.marca, e.modelo].filter(Boolean).join(" ") || "—"}
-                  </td>
-                  <td className="px-4 py-2 font-mono text-xs">{e.serie ?? "—"}</td>
-                  <td className="px-4 py-2">
-                    {PROPIEDAD[e.propiedad] ?? e.propiedad}
-                    {e.propiedad !== "propio" && e.propietario ? (
-                      <span className="block text-xs text-muted">{e.propietario.nombre}</span>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-2">{ESTADO_FISICO[e.estado_fisico] ?? e.estado_fisico}</td>
-                  <td className="px-4 py-2">
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                        COLOR_ESTADO[e.estado_operativo] ?? ""
-                      }`}
-                    >
-                      {ESTADO_OPERATIVO[e.estado_operativo] ?? e.estado_operativo}
-                    </span>
-                  </td>
+        // Formulario GET: las casillas marcadas viajan como ?id=...&id=...
+        <form
+          action="/equipos/etiquetas"
+          method="get"
+          className="flex flex-col gap-3"
+        >
+          {puedeImprimir ? (
+            <div>
+              <button
+                type="submit"
+                className="h-10 rounded-lg border border-foreground/15 px-4 text-sm font-medium hover:border-brand"
+              >
+                Imprimir etiquetas de las seleccionadas
+              </button>
+            </div>
+          ) : null}
+          <div className="overflow-x-auto rounded-xl border border-foreground/10">
+            <table className="w-full min-w-[760px] text-sm">
+              <thead className="bg-foreground/5 text-left text-xs text-muted">
+                <tr>
+                  {puedeImprimir ? <th className="w-10 px-4 py-2" /> : null}
+                  <th className="px-4 py-2 font-medium">Etiqueta</th>
+                  <th className="px-4 py-2 font-medium">Tipo</th>
+                  <th className="px-4 py-2 font-medium">Marca / modelo</th>
+                  <th className="px-4 py-2 font-medium">Serie</th>
+                  <th className="px-4 py-2 font-medium">Propiedad</th>
+                  <th className="px-4 py-2 font-medium">Físico</th>
+                  <th className="px-4 py-2 font-medium">Estado</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-foreground/10">
+                {equipos.map((e) => (
+                  <tr key={e.id}>
+                    {puedeImprimir ? (
+                      <td className="px-4 py-2">
+                        <input
+                          type="checkbox"
+                          name="id"
+                          value={e.id}
+                          aria-label={`Seleccionar ${e.etiqueta}`}
+                          className="size-4"
+                        />
+                      </td>
+                    ) : null}
+                    <td className="px-4 py-2 font-mono font-medium">
+                      {e.etiqueta}
+                    </td>
+                    <td className="px-4 py-2">{e.articulo?.nombre ?? "—"}</td>
+                    <td className="px-4 py-2">
+                      {[e.marca, e.modelo].filter(Boolean).join(" ") || "—"}
+                    </td>
+                    <td className="px-4 py-2 font-mono text-xs">
+                      {e.serie ?? "—"}
+                    </td>
+                    <td className="px-4 py-2">
+                      {PROPIEDAD[e.propiedad] ?? e.propiedad}
+                      {e.propiedad !== "propio" && e.propietario ? (
+                        <span className="block text-xs text-muted">
+                          {e.propietario.nombre}
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-2">
+                      {ESTADO_FISICO[e.estado_fisico] ?? e.estado_fisico}
+                    </td>
+                    <td className="px-4 py-2">
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                          COLOR_ESTADO[e.estado_operativo] ?? ""
+                        }`}
+                      >
+                        {ESTADO_OPERATIVO[e.estado_operativo] ??
+                          e.estado_operativo}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </form>
       ) : (
         <p className="rounded-xl border border-dashed border-foreground/15 p-6 text-center text-sm text-muted">
           Aún no hay equipos registrados.
