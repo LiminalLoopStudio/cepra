@@ -2,6 +2,11 @@ import Link from "next/link";
 import { requireUsuario, ROL_ETIQUETA } from "@/lib/auth";
 import { cerrarSesion } from "./login/actions";
 
+const ACCESOS = [
+  { href: "/equipos", texto: "Equipos" },
+  { href: "/catalogo", texto: "Catálogo" },
+];
+
 export default async function Home() {
   const usuario = await requireUsuario();
 
@@ -18,12 +23,15 @@ export default async function Home() {
       </p>
 
       <nav className="mt-6 flex flex-wrap justify-center gap-3">
-        <Link
-          href="/catalogo"
-          className="rounded-xl border border-foreground/15 px-6 py-4 font-medium hover:border-brand"
-        >
-          Catálogo
-        </Link>
+        {ACCESOS.map((a) => (
+          <Link
+            key={a.href}
+            href={a.href}
+            className="min-w-36 rounded-xl border border-foreground/15 px-6 py-4 font-medium hover:border-brand"
+          >
+            {a.texto}
+          </Link>
+        ))}
       </nav>
 
       <form action={cerrarSesion} className="mt-6">
