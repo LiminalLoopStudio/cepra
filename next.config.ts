@@ -1,9 +1,8 @@
 import type { NextConfig } from "next";
 
+// cacheComponents desactivado: CEPRA es una app con sesión y datos en tiempo
+// real; casi todo depende del usuario, así que el caché por componente no aporta.
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
   turbopack: {
     rules: {
       "*.css": {
