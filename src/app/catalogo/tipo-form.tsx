@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { crearTipo, type EstadoTipo } from "./actions";
+import { actualizarTipo, crearTipo, type CamposTipo, type EstadoTipo } from "./actions";
 
 const CATEGORIAS = [
   "Consola",
@@ -20,14 +20,25 @@ const CATEGORIAS = [
 const campo =
   "h-11 w-full rounded-lg border border-foreground/15 bg-background px-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30";
 
-export function NuevoTipoForm() {
-  const [estado, accion, pendiente] = useActionState<EstadoTipo, FormData>(crearTipo, {});
-  const v = estado.valores;
+type Props =
+  | { modo: "crear" }
+  | { modo: "editar"; id: string; inicial: CamposTipo };
+
+// Formulario de tipo de artículo: sirve para dar de alta y para editar.
+export function TipoForm(props: Props) {
+  const accionServidor =
+    props.modo === "crear" ? crearTipo : actualizarTipo.bind(null, props.id);
+
+  const [estado, accion, pendiente] = useActionState<EstadoTipo, FormData>(accionServidor, {});
+
+  // Si hubo error se muestran los valores que escribió el usuario;
+  // si no, los iniciales (al editar) o vacío (al crear).
+  const v = estado.valores ?? (props.modo === "editar" ? props.inicial : undefined);
 
   return (
     <form
       // Al crear uno, cambia la key y React limpia el formulario.
-      key={estado.creado ?? "nuevo"}
+      key={estado.creado ?? "form"}
       action={accion}
       className="grid gap-4 sm:grid-cols-2"
     >
@@ -41,7 +52,9 @@ export function NuevoTipoForm() {
           defaultValue={v?.codigo_tipo}
           className={`${campo} font-mono uppercase`}
         />
-        <span className="text-xs text-muted">2 a 4 letras o números. Va en la etiqueta: GP-XBX-0001</span>
+        <span className="text-xs text-muted">
+          2 a 4 letras o números. Va en la etiqueta: GP-XBX-0001
+        </span>
       </label>
 
       <label className="flex flex-col gap-1.5">
@@ -132,12 +145,18 @@ export function NuevoTipoForm() {
       </label>
 
       {estado.error ? (
-        <p role="alert" className="rounded-lg bg-red-500/15 px-3 py-2 text-sm text-red-500 sm:col-span-2">
+        <p
+          role="alert"
+          className="rounded-lg bg-red-500/15 px-3 py-2 text-sm text-red-500 sm:col-span-2"
+        >
           {estado.error}
         </p>
       ) : null}
-      {estado.ok ? (
-        <p role="status" className="rounded-lg bg-green-500/15 px-3 py-2 text-sm text-green-500 sm:col-span-2">
+      {estado.ok && estado.creado ? (
+        <p
+          role="status"
+          className="rounded-lg bg-green-500/15 px-3 py-2 text-sm text-green-500 sm:col-span-2"
+        >
           Tipo {estado.creado} agregado.
         </p>
       ) : null}
@@ -148,7 +167,7 @@ export function NuevoTipoForm() {
           disabled={pendiente}
           className="h-11 rounded-lg bg-brand px-6 font-semibold text-white disabled:opacity-60"
         >
-          {pendiente ? "Guardando…" : "Agregar tipo"}
+          {pendiente ? "Guardando…" : props.modo === "crear" ? "Agregar tipo" : "Guardar cambios"}
         </button>
       </div>
     </form>

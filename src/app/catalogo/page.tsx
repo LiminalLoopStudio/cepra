@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUsuario } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { NuevoTipoForm } from "./nuevo-tipo-form";
+import { TipoForm } from "./tipo-form";
 
 export const metadata: Metadata = { title: "Catálogo" };
 
@@ -32,7 +32,7 @@ export default async function CatalogoPage() {
       {esAdmin ? (
         <section className="rounded-2xl border border-foreground/10 p-5">
           <h2 className="mb-4 font-semibold">Agregar tipo</h2>
-          <NuevoTipoForm />
+          <TipoForm modo="crear" />
         </section>
       ) : null}
 
@@ -54,6 +54,7 @@ export default async function CatalogoPage() {
                   <th className="px-4 py-2 font-medium">Control</th>
                   <th className="px-4 py-2 text-right font-medium">Mínimo</th>
                   <th className="px-4 py-2 font-medium">Puertos</th>
+                  {esAdmin ? <th className="px-4 py-2" /> : null}
                 </tr>
               </thead>
               <tbody className="divide-y divide-foreground/10">
@@ -68,6 +69,13 @@ export default async function CatalogoPage() {
                     <td className="px-4 py-2">{t.serializado ? "Por pieza" : "Por cantidad"}</td>
                     <td className="px-4 py-2 text-right tabular-nums">{t.stock_minimo}</td>
                     <td className="px-4 py-2 text-muted">{t.puertos_default.join(", ") || "—"}</td>
+                    {esAdmin ? (
+                      <td className="px-4 py-2 text-right">
+                        <Link href={`/catalogo/${t.id}`} className="text-brand hover:underline">
+                          Editar
+                        </Link>
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
