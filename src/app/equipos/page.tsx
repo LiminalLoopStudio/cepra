@@ -60,6 +60,14 @@ export default async function EquiposPage() {
               Etiquetas por validar
             </Link>
           ) : null}
+          {puedeImprimir ? (
+            <Link
+              href="/equipos/validar"
+              className="flex h-11 items-center rounded-lg border border-foreground/15 px-5 font-medium hover:border-brand"
+            >
+              Validar etiquetas
+            </Link>
+          ) : null}
           {esAdmin ? (
             <Link
               href="/equipos/nuevo"

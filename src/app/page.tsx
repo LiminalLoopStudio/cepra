@@ -2,10 +2,15 @@ import Link from "next/link";
 import { requireUsuario, ROL_ETIQUETA } from "@/lib/auth";
 import { cerrarSesion } from "./login/actions";
 
-const ACCESOS = [
-  { href: "/equipos", texto: "Equipos" },
-  { href: "/catalogo", texto: "Catálogo" },
-  { href: "/propietarios", texto: "Propietarios" },
+import type { Rol } from "@/lib/auth";
+
+const TODOS: Rol[] = ["administrador", "almacenista", "lider", "staff"];
+
+const ACCESOS: { href: string; texto: string; roles: Rol[] }[] = [
+  { href: "/equipos/validar", texto: "Validar etiquetas", roles: ["administrador", "almacenista"] },
+  { href: "/equipos", texto: "Equipos", roles: TODOS },
+  { href: "/catalogo", texto: "Catálogo", roles: TODOS },
+  { href: "/propietarios", texto: "Propietarios", roles: TODOS },
 ];
 
 export default async function Home() {
@@ -24,7 +29,7 @@ export default async function Home() {
       </p>
 
       <nav className="mt-6 flex flex-wrap justify-center gap-3">
-        {ACCESOS.map((a) => (
+        {ACCESOS.filter((a) => a.roles.includes(usuario.rol)).map((a) => (
           <Link
             key={a.href}
             href={a.href}
