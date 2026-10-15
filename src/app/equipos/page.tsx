@@ -129,7 +129,12 @@ export default async function EquiposPage() {
                       </td>
                     ) : null}
                     <td className="px-4 py-2 font-mono font-medium">
-                      {e.etiqueta}
+                      <Link
+                        href={`/equipos/${e.id}`}
+                        className="text-brand hover:underline"
+                      >
+                        {e.etiqueta}
+                      </Link>
                     </td>
                     <td className="px-4 py-2">{e.articulo?.nombre ?? "—"}</td>
                     <td className="px-4 py-2">
