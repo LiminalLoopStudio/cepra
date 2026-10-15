@@ -1,27 +1,9 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import Link from "next/link";
+import { requireUsuario, ROL_ETIQUETA } from "@/lib/auth";
 import { cerrarSesion } from "./login/actions";
 
-const ROL_ETIQUETA = {
-  administrador: "Administrador",
-  almacenista: "Almacenista",
-  lider: "Líder de zona",
-  staff: "Staff",
-} as const;
-
 export default async function Home() {
-  const supabase = await createClient();
-
-  const { data: claims } = await supabase.auth.getClaims();
-  const userId = claims?.claims?.sub;
-  if (!userId) redirect("/login");
-
-  // El perfil se lee con la sesión del usuario: aplica la regla RLS de "usuarios".
-  const { data: perfil } = await supabase
-    .from("usuarios")
-    .select("nombre, rol, activo")
-    .eq("id", userId)
-    .maybeSingle();
+  const usuario = await requireUsuario();
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 text-center">
@@ -30,21 +12,19 @@ export default async function Home() {
       </div>
       <h1 className="text-3xl font-bold">CEPRA</h1>
 
-      {perfil ? (
-        <>
-          <p className="text-lg">Hola, {perfil.nombre}</p>
-          <p className="rounded-full bg-brand/15 px-4 py-1.5 text-sm font-medium text-brand">
-            {ROL_ETIQUETA[perfil.rol as keyof typeof ROL_ETIQUETA] ?? perfil.rol}
-          </p>
-          {!perfil.activo ? (
-            <p className="text-sm text-red-500">Tu usuario está desactivado.</p>
-          ) : null}
-        </>
-      ) : (
-        <p className="text-sm text-red-500">
-          Tu usuario no tiene perfil en CEPRA. Pide al administrador que lo revise.
-        </p>
-      )}
+      <p className="text-lg">Hola, {usuario.nombre}</p>
+      <p className="rounded-full bg-brand/15 px-4 py-1.5 text-sm font-medium text-brand">
+        {ROL_ETIQUETA[usuario.rol]}
+      </p>
+
+      <nav className="mt-6 flex flex-wrap justify-center gap-3">
+        <Link
+          href="/catalogo"
+          className="rounded-xl border border-foreground/15 px-6 py-4 font-medium hover:border-brand"
+        >
+          Catálogo
+        </Link>
+      </nav>
 
       <form action={cerrarSesion} className="mt-6">
         <button
@@ -54,8 +34,6 @@ export default async function Home() {
           Cerrar sesión
         </button>
       </form>
-
-      <p className="text-sm text-muted">En construcción</p>
     </main>
   );
 }
