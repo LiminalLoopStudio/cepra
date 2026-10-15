@@ -38,3 +38,6 @@ desktop.ini
 
 # Pruebas
 /coverage
+
+# Carpeta temporal que crea la app de Claude al entregar archivos
+Claude outputs/
