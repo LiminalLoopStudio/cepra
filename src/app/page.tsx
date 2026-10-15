@@ -9,6 +9,7 @@ const TODOS: Rol[] = ["administrador", "almacenista", "lider", "staff"];
 const ACCESOS: { href: string; texto: string; roles: Rol[] }[] = [
   { href: "/equipos/validar", texto: "Validar etiquetas", roles: ["administrador", "almacenista"] },
   { href: "/equipos", texto: "Equipos", roles: TODOS },
+  { href: "/stock", texto: "Stock", roles: TODOS },
   { href: "/catalogo", texto: "Catálogo", roles: TODOS },
   { href: "/propietarios", texto: "Propietarios", roles: TODOS },
 ];
