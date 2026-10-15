@@ -1,25 +1,27 @@
-// Prueba de conexión: consulta el servicio de autenticación de Supabase.
-// Si responde, la URL y la llave del .env.local son correctas.
-async function estadoSupabase(): Promise<{ ok: boolean; detalle: string }> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const llave = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !llave) {
-    return { ok: false, detalle: "Faltan variables en .env.local" };
-  }
-  try {
-    const res = await fetch(`${url}/auth/v1/health`, {
-      headers: { apikey: llave },
-      cache: "no-store",
-    });
-    if (res.ok) return { ok: true, detalle: "Conectado a Supabase" };
-    return { ok: false, detalle: `Supabase respondió ${res.status}` };
-  } catch {
-    return { ok: false, detalle: "No se pudo contactar a Supabase" };
-  }
-}
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { cerrarSesion } from "./login/actions";
+
+const ROL_ETIQUETA = {
+  administrador: "Administrador",
+  almacenista: "Almacenista",
+  lider: "Líder de zona",
+  staff: "Staff",
+} as const;
 
 export default async function Home() {
-  const supabase = await estadoSupabase();
+  const supabase = await createClient();
+
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (!userId) redirect("/login");
+
+  // El perfil se lee con la sesión del usuario: aplica la regla RLS de "usuarios".
+  const { data: perfil } = await supabase
+    .from("usuarios")
+    .select("nombre, rol, activo")
+    .eq("id", userId)
+    .maybeSingle();
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 text-center">
@@ -27,19 +29,32 @@ export default async function Home() {
         C
       </div>
       <h1 className="text-3xl font-bold">CEPRA</h1>
-      <p className="max-w-md text-muted">
-        Control de Equipos, Préstamos y Recepción en Almacén
-        <br />
-        Gaming Partners
-      </p>
 
-      <p
-        className={`mt-6 rounded-full px-4 py-1.5 text-sm font-medium ${
-          supabase.ok ? "bg-green-500/15 text-green-500" : "bg-red-500/15 text-red-500"
-        }`}
-      >
-        {supabase.ok ? "✓" : "✗"} {supabase.detalle}
-      </p>
+      {perfil ? (
+        <>
+          <p className="text-lg">Hola, {perfil.nombre}</p>
+          <p className="rounded-full bg-brand/15 px-4 py-1.5 text-sm font-medium text-brand">
+            {ROL_ETIQUETA[perfil.rol as keyof typeof ROL_ETIQUETA] ?? perfil.rol}
+          </p>
+          {!perfil.activo ? (
+            <p className="text-sm text-red-500">Tu usuario está desactivado.</p>
+          ) : null}
+        </>
+      ) : (
+        <p className="text-sm text-red-500">
+          Tu usuario no tiene perfil en CEPRA. Pide al administrador que lo revise.
+        </p>
+      )}
+
+      <form action={cerrarSesion} className="mt-6">
+        <button
+          type="submit"
+          className="rounded-lg border border-foreground/15 px-4 py-2 text-sm text-muted hover:text-foreground"
+        >
+          Cerrar sesión
+        </button>
+      </form>
+
       <p className="text-sm text-muted">En construcción</p>
     </main>
   );

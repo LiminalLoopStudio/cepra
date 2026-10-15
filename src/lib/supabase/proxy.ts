@@ -1,9 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-// Se ejecuta antes de cada petición: renueva el token de sesión de Supabase
-// para que el usuario no se quede "deslogueado" a media jornada.
-// (Las redirecciones a /login se agregan cuando exista el login.)
+const RUTAS_PUBLICAS = ["/login"];
+
+// Se ejecuta antes de cada petición:
+//  1. Renueva el token de sesión de Supabase.
+//  2. Sin sesión → manda a /login. Con sesión en /login → manda al inicio.
+// Ojo: esto solo decide a dónde mandar al usuario; la seguridad real de los
+// datos la ponen las reglas RLS en la base de datos.
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -27,7 +31,25 @@ export async function updateSession(request: NextRequest) {
   );
 
   // No pongas código entre createServerClient y getClaims().
-  await supabase.auth.getClaims();
+  const { data } = await supabase.auth.getClaims();
+  const conSesion = Boolean(data?.claims?.sub);
+
+  const { pathname } = request.nextUrl;
+  const esPublica = RUTAS_PUBLICAS.includes(pathname);
+
+  if (!conSesion && !esPublica) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
+  if (conSesion && pathname === "/login") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
 
   return response;
 }
