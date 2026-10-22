@@ -90,10 +90,11 @@ export default async function EquipoPage({ params }: PageProps<"/equipos/[id]">)
   const usuario = await requireUsuario();
   const esAdmin = usuario.rol === "administrador";
   const puedeImprimir = esAdmin || usuario.rol === "almacenista";
+  const veCuentas = esAdmin || usuario.rol === "lider";
   const { id } = await params;
 
   const supabase = await createClient();
-  const [{ data: eq }, { data: movs }, { data: props }] = await Promise.all([
+  const [{ data: eq }, { data: movs }, { data: props }, { data: cuentasData }] = await Promise.all([
     supabase
       .from("equipos")
       .select(
@@ -109,7 +110,21 @@ export default async function EquipoPage({ params }: PageProps<"/equipos/[id]">)
       .order("created_at", { ascending: false })
       .limit(100),
     supabase.from("propietarios").select("id, nombre"),
+    // Cuentas iniciadas en este equipo (RLS: solo líder y administrador las ven).
+    veCuentas
+      ? supabase
+          .from("cuentas")
+          .select("id, correo, usuario, plataforma:plataformas(nombre)")
+          .eq("equipo_id", id)
+          .eq("activo", true)
+      : Promise.resolve({ data: [] }),
   ]);
+  const cuentas = (cuentasData ?? []) as unknown as {
+    id: string;
+    correo: string;
+    usuario: string | null;
+    plataforma: { nombre: string } | null;
+  }[];
   const nombrePropietario = new Map(
     (props ?? []).map((p) => [p.id as string, p.nombre as string]),
   );
@@ -193,6 +208,32 @@ export default async function EquipoPage({ params }: PageProps<"/equipos/[id]">)
           </div>
         ) : null}
       </section>
+
+      {veCuentas ? (
+        <section>
+          <h2 className="mb-3 font-semibold">Cuentas en este equipo</h2>
+          {cuentas.length === 0 ? (
+            <p className="text-sm text-muted">
+              Ninguna. Se ligan desde{" "}
+              <Link href="/cuentas" className="text-brand hover:underline">
+                Cuentas
+              </Link>
+              .
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-1 text-sm">
+              {cuentas.map((c) => (
+                <li key={c.id}>
+                  <Link href={`/cuentas/${c.id}`} className="text-brand hover:underline">
+                    {c.plataforma?.nombre}: {c.correo}
+                  </Link>
+                  {c.usuario ? <span className="text-muted"> · {c.usuario}</span> : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : null}
 
       <section>
         <h2 className="mb-3 font-semibold">Historial</h2>
