@@ -14,7 +14,10 @@ export default async function UsuariosPage() {
   const admin = createAdminClient();
   const [{ data: perfiles, error: errorPerfiles }, { data: auth, error: errorAuth }] =
     await Promise.all([
-    admin.from("usuarios").select("id, nombre, rol, activo, created_at").order("nombre"),
+    admin
+      .from("usuarios")
+      .select("id, nombre, rol, activo, debe_cambiar_contrasena, created_at")
+      .order("nombre"),
     admin.auth.admin.listUsers({ perPage: 1000 }),
   ]);
 
@@ -73,6 +76,11 @@ export default async function UsuariosPage() {
                       {u.nombre}
                       {u.id === yo.id ? <span className="ml-2 text-xs text-muted">(tú)</span> : null}
                       {!u.activo ? <span className="ml-2 text-xs text-muted">(desactivado)</span> : null}
+                      {u.activo && u.debe_cambiar_contrasena ? (
+                        <span className="ml-2 rounded-full bg-yellow-500/15 px-2 py-0.5 text-xs text-yellow-500">
+                          contraseña temporal
+                        </span>
+                      ) : null}
                     </td>
                     <td className="px-4 py-2 text-muted">{correo.get(u.id) ?? "—"}</td>
                     <td className="px-4 py-2">{ROL_ETIQUETA[u.rol as Rol] ?? u.rol}</td>

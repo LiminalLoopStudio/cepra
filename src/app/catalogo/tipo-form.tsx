@@ -1,33 +1,28 @@
 "use client";
 
-import { useActionState } from "react";
+import Link from "next/link";
+import { useActionState, useState } from "react";
 import { actualizarTipo, crearTipo, type CamposTipo, type EstadoTipo } from "./actions";
 
-const CATEGORIAS = [
-  "Consola",
-  "Pantalla",
-  "PC",
-  "Laptop",
-  "Control",
-  "Periférico",
-  "Cable",
-  "Adaptador",
-  "Extensión",
-  "Corriente",
-  "Consumible",
-];
+export type CategoriaOpcion = { id: string; nombre: string; prefijo: string };
 
 const campo =
   "h-11 w-full rounded-lg border border-foreground/15 bg-background px-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30";
 
 type Props =
-  | { modo: "crear" }
-  | { modo: "editar"; id: string; inicial: CamposTipo };
+  | { modo: "crear"; categorias: CategoriaOpcion[] }
+  | {
+      modo: "editar";
+      id: string;
+      codigo: string;
+      categorias: CategoriaOpcion[];
+      inicial: CamposTipo;
+    };
 
 // Formulario de tipo de artículo: sirve para dar de alta y para editar.
+// El código NO se escribe: lo genera la base con las letras de la categoría.
 export function TipoForm(props: Props) {
-  const accionServidor =
-    props.modo === "crear" ? crearTipo : actualizarTipo.bind(null, props.id);
+  const accionServidor = props.modo === "crear" ? crearTipo : actualizarTipo.bind(null, props.id);
 
   const [estado, accion, pendiente] = useActionState<EstadoTipo, FormData>(accionServidor, {});
 
@@ -35,25 +30,46 @@ export function TipoForm(props: Props) {
   // si no, los iniciales (al editar) o vacío (al crear).
   const v = estado.valores ?? (props.modo === "editar" ? props.inicial : undefined);
 
+  // Cambia qué campos se ven: por pieza → puertos y accesorios; por cantidad → existencia.
+  const [control, setControl] = useState<string>(v?.serializado ?? "");
+  const [categoriaId, setCategoriaId] = useState<string>(v?.categoria_id ?? "");
+
+  const prefijo = props.categorias.find((c) => c.id === categoriaId)?.prefijo;
+  const ejemplo = prefijo ? `${prefijo}01` : "CN01";
+
   return (
     <form
       // Al crear uno, cambia la key y React limpia el formulario.
       key={estado.creado ?? "form"}
       action={accion}
+      // React limpia el formulario después de cada envío. Si hubo error eso
+      // desmarcaba las opciones (radio) aunque la pantalla las mostrara elegidas.
+      // Se evita: lo escrito se conserva; tras un alta exitosa la "key" lo limpia.
+      onReset={(e) => e.preventDefault()}
       className="grid gap-4 sm:grid-cols-2"
     >
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium">Código</span>
-        <input
-          name="codigo_tipo"
+        <span className="text-sm font-medium">Categoría</span>
+        <select
+          name="categoria_id"
           required
-          maxLength={4}
-          placeholder="XBX"
-          defaultValue={v?.codigo_tipo}
-          className={`${campo} font-mono uppercase`}
-        />
+          defaultValue={v?.categoria_id ?? ""}
+          onChange={(e) => setCategoriaId(e.target.value)}
+          className={campo}
+        >
+          <option value="" disabled>
+            Elige…
+          </option>
+          {props.categorias.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nombre} ({c.prefijo})
+            </option>
+          ))}
+        </select>
         <span className="text-xs text-muted">
-          2 a 4 letras o números. Va en la etiqueta: GP-XBX-0001
+          {props.modo === "crear"
+            ? `El código se genera solo: ${ejemplo}, ${prefijo ?? "CN"}02…`
+            : `Código actual: ${props.codigo}. Cambiar la categoría le da un código nuevo, solo si aún no tiene piezas ni movimientos.`}
         </span>
       </label>
 
@@ -66,23 +82,6 @@ export function TipoForm(props: Props) {
           defaultValue={v?.nombre}
           className={campo}
         />
-      </label>
-
-      <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium">Categoría</span>
-        <input
-          name="categoria"
-          required
-          list="categorias"
-          placeholder="Consola"
-          defaultValue={v?.categoria}
-          className={campo}
-        />
-        <datalist id="categorias">
-          {CATEGORIAS.map((c) => (
-            <option key={c} value={c} />
-          ))}
-        </datalist>
       </label>
 
       <label className="flex flex-col gap-1.5">
@@ -106,7 +105,8 @@ export function TipoForm(props: Props) {
             name="serializado"
             value="si"
             required
-            defaultChecked={v?.serializado === "si"}
+            checked={control === "si"}
+            onChange={() => setControl("si")}
             className="mt-1"
           />
           <span>
@@ -121,7 +121,8 @@ export function TipoForm(props: Props) {
             type="radio"
             name="serializado"
             value="no"
-            defaultChecked={v?.serializado === "no"}
+            checked={control === "no"}
+            onChange={() => setControl("no")}
             className="mt-1"
           />
           <span>
@@ -133,16 +134,86 @@ export function TipoForm(props: Props) {
         </label>
       </fieldset>
 
-      <label className="flex flex-col gap-1.5 sm:col-span-2">
-        <span className="text-sm font-medium">Puertos (opcional)</span>
-        <input
-          name="puertos"
-          placeholder="HDMI 2.1, USB-A x3, Ethernet"
-          defaultValue={v?.puertos}
-          className={campo}
-        />
-        <span className="text-xs text-muted">Separados por coma.</span>
-      </label>
+      {/* Por pieza: puertos. */}
+      {control === "si" ? (
+        <label className="flex flex-col gap-1.5 sm:col-span-2">
+          <span className="text-sm font-medium">Puertos (opcional)</span>
+          <input
+            name="puertos"
+            placeholder="HDMI 2.1, USB-A x3, Ethernet"
+            defaultValue={v?.puertos}
+            className={campo}
+          />
+          <span className="text-xs text-muted">
+            Conexiones que trae el equipo, separadas por coma.
+          </span>
+        </label>
+      ) : null}
+
+      {/* Por pieza: accesorios que viajan con el equipo y llevan su propia etiqueta. */}
+      {control === "si" ? (
+        <fieldset className="flex flex-col gap-2 sm:col-span-2">
+          <legend className="mb-1.5 text-sm font-medium">Accesorios con etiqueta propia</legend>
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              name="lleva_control"
+              value="si"
+              defaultChecked={v?.lleva_control === "si"}
+              className="mt-1 size-4"
+            />
+            <span>
+              <strong>Trae control</strong>
+              <span className="block text-sm text-muted">
+                Se imprime una etiqueta para el control: GP-{ejemplo}-0001-CTRL
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              name="lleva_cables"
+              value="si"
+              defaultChecked={v?.lleva_cables === "si"}
+              className="mt-1 size-4"
+            />
+            <span>
+              <strong>Trae cables originales</strong>
+              <span className="block text-sm text-muted">
+                Una etiqueta para el juego de cables (HDMI + corriente): GP-{ejemplo}-0001-CBL
+              </span>
+            </span>
+          </label>
+        </fieldset>
+      ) : null}
+
+      {/* Por cantidad: al crear, cuántos hay hoy; al editar, enlace a Stock. */}
+      {control === "no" && props.modo === "crear" ? (
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium">Existencia inicial</span>
+          <input
+            name="existencia_inicial"
+            type="number"
+            min={0}
+            step={1}
+            defaultValue={v?.existencia_inicial ?? "0"}
+            className={campo}
+          />
+          <span className="text-xs text-muted">
+            Cuántos hay hoy en almacén. Después se ajusta desde Stock.
+          </span>
+        </label>
+      ) : null}
+
+      {control === "no" && props.modo === "editar" ? (
+        <p className="text-sm sm:col-span-2">
+          Las existencias se cambian en{" "}
+          <Link href={`/stock/${props.id}`} className="text-brand hover:underline">
+            Stock → Ajustar existencias
+          </Link>
+          , para que cada cambio quede registrado con su motivo.
+        </p>
+      ) : null}
 
       {estado.error ? (
         <p
@@ -157,7 +228,7 @@ export function TipoForm(props: Props) {
           role="status"
           className="rounded-lg bg-green-500/15 px-3 py-2 text-sm text-green-500 sm:col-span-2"
         >
-          Tipo {estado.creado} agregado.
+          {estado.mensaje ?? `Tipo ${estado.creado} agregado.`}
         </p>
       ) : null}
 

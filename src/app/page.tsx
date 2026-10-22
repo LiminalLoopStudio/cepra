@@ -15,8 +15,9 @@ const ACCESOS: { href: string; texto: string; roles: Rol[] }[] = [
   { href: "/usuarios", texto: "Usuarios", roles: ["administrador"] },
 ];
 
-export default async function Home() {
+export default async function Home({ searchParams }: PageProps<"/">) {
   const usuario = await requireUsuario();
+  const { contrasena } = await searchParams;
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 text-center">
@@ -24,6 +25,12 @@ export default async function Home() {
         C
       </div>
       <h1 className="text-3xl font-bold">CEPRA</h1>
+
+      {contrasena === "ok" ? (
+        <p role="status" className="rounded-lg bg-green-500/15 px-4 py-2 text-sm text-green-500">
+          Contraseña guardada. Usa la nueva la próxima vez que entres.
+        </p>
+      ) : null}
 
       <p className="text-lg">Hola, {usuario.nombre}</p>
       <p className="rounded-full bg-brand/15 px-4 py-1.5 text-sm font-medium text-brand">
@@ -42,14 +49,22 @@ export default async function Home() {
         ))}
       </nav>
 
-      <form action={cerrarSesion} className="mt-6">
-        <button
-          type="submit"
+      <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+        <Link
+          href="/cambiar-contrasena"
           className="rounded-lg border border-foreground/15 px-4 py-2 text-sm text-muted hover:text-foreground"
         >
-          Cerrar sesión
-        </button>
-      </form>
+          Cambiar mi contraseña
+        </Link>
+        <form action={cerrarSesion}>
+          <button
+            type="submit"
+            className="rounded-lg border border-foreground/15 px-4 py-2 text-sm text-muted hover:text-foreground"
+          >
+            Cerrar sesión
+          </button>
+        </form>
+      </div>
     </main>
   );
 }

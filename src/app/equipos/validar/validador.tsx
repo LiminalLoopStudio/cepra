@@ -86,7 +86,13 @@ export function Validador() {
         ) : null}
       </div>
 
-      {ultimo ? (
+      {/* Mientras se espera la segunda etiqueta no se muestra el resultado
+          anterior: así no parece que la nueva lectura falló. */}
+      {primero ? (
+        <div className="rounded-2xl border-2 border-brand bg-brand/10 p-6 text-center text-brand">
+          <p className="text-xl font-bold">{primero} leído · ahora escanea la otra etiqueta</p>
+        </div>
+      ) : ultimo ? (
         <div
           role="status"
           aria-live="assertive"
@@ -100,9 +106,9 @@ export function Validador() {
         </div>
       )}
 
-      {historial.length > 1 ? (
+      {historial.length > (primero ? 0 : 1) ? (
         <ul className="flex flex-col gap-1 text-sm">
-          {historial.slice(1).map((r, i) => (
+          {historial.slice(primero ? 0 : 1).map((r, i) => (
             <li key={i} className="flex gap-3 rounded-lg bg-foreground/5 px-3 py-2">
               <span className={`mt-1.5 size-2 shrink-0 rounded-full ${PUNTO[r.nivel]}`} />
               <span className="flex-1">{r.mensaje}</span>

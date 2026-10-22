@@ -24,6 +24,14 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         <div className="rounded-2xl border border-foreground/10 p-6">
           <LoginForm />
         </div>
+
+        <details className="mt-6 text-sm text-muted">
+          <summary className="cursor-pointer hover:text-foreground">¿Olvidaste tu contraseña?</summary>
+          <p className="mt-2">
+            Pídele al administrador de CEPRA una contraseña temporal. Al entrar con ella, el
+            sistema te pedirá crear una nueva.
+          </p>
+        </details>
       </div>
     </main>
   );

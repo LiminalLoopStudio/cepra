@@ -28,7 +28,13 @@ export function AjusteForm({ articuloId }: { articuloId: string }) {
   const [direccion, setDireccion] = useState<"entrada" | "salida">("entrada");
 
   return (
-    <form key={estado.n ?? 0} action={accion} className="grid gap-4 sm:grid-cols-2">
+    <form key={estado.n ?? 0} action={accion}
+      // React limpia el formulario después de cada envío. Si hubo error eso
+      // desmarcaba las opciones (radio) aunque la pantalla las mostrara elegidas.
+      // Se evita: lo escrito se conserva; tras un alta exitosa la "key" lo limpia.
+      onReset={(e) => e.preventDefault()}
+      className="grid gap-4 sm:grid-cols-2"
+    >
       <fieldset className="flex flex-wrap gap-3 sm:col-span-2">
         <legend className="mb-1.5 text-sm font-medium">Movimiento</legend>
         {(

@@ -14,7 +14,11 @@ export default async function EditarUsuarioPage({ params }: PageProps<"/usuarios
 
   const admin = createAdminClient();
   const [{ data: u }, { data: auth }] = await Promise.all([
-    admin.from("usuarios").select("id, nombre, rol, activo").eq("id", id).maybeSingle(),
+    admin
+      .from("usuarios")
+      .select("id, nombre, rol, activo, debe_cambiar_contrasena")
+      .eq("id", id)
+      .maybeSingle(),
     admin.auth.admin.getUserById(id),
   ]);
   if (!u) notFound();
@@ -39,7 +43,15 @@ export default async function EditarUsuarioPage({ params }: PageProps<"/usuarios
 
       <section className="rounded-2xl border border-foreground/10 p-5">
         <h2 className="mb-1 font-semibold">Contraseña</h2>
-        <p className="mb-4 text-sm text-muted">Úsalo si la persona olvidó la suya.</p>
+        <p className="mb-4 text-sm text-muted">
+          Si olvidó la suya, ponle una temporal y dísela. Al entrar, el sistema le pedirá crear una
+          nueva.
+          {u.debe_cambiar_contrasena ? (
+            <span className="mt-1 block text-yellow-500">
+              Ahora tiene una contraseña temporal: aún no ha creado la suya.
+            </span>
+          ) : null}
+        </p>
         <ContrasenaForm id={u.id} />
       </section>
 

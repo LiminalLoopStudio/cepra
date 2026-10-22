@@ -21,7 +21,13 @@ export function EditarEquipoForm({ id, empresas, inicial }: Props) {
   const [propiedad, setPropiedad] = useState(v.propiedad);
 
   return (
-    <form action={accion} className="grid gap-4 sm:grid-cols-2">
+    <form action={accion}
+      // React limpia el formulario después de cada envío. Si hubo error eso
+      // desmarcaba las opciones (radio) aunque la pantalla las mostrara elegidas.
+      // Se evita: lo escrito se conserva; tras un alta exitosa la "key" lo limpia.
+      onReset={(e) => e.preventDefault()}
+      className="grid gap-4 sm:grid-cols-2"
+    >
       <label className="flex flex-col gap-1.5">
         <span className="text-sm font-medium">Marca</span>
         <input name="marca" defaultValue={v.marca} className={campo} />

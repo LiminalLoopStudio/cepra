@@ -29,7 +29,13 @@ export function PropietarioForm(props: Props) {
   const esPropio = props.modo === "editar" && props.inicial.tipo === "propio";
 
   return (
-    <form key={estado.creado ?? "form"} action={accion} className="grid gap-4 sm:grid-cols-2">
+    <form
+      key={estado.creado ?? "form"}
+      action={accion}
+      // Evita que React vacíe el formulario tras un error (el rol/tipo volvía al valor inicial).
+      onReset={(e) => e.preventDefault()}
+      className="grid gap-4 sm:grid-cols-2"
+    >
       <label className="flex flex-col gap-1.5">
         <span className="text-sm font-medium">Nombre de la empresa</span>
         <input

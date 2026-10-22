@@ -11,11 +11,16 @@ export default async function CatalogoPage() {
   const esAdmin = usuario.rol === "administrador";
 
   const supabase = await createClient();
-  const { data: tipos, error } = await supabase
-    .from("catalogo_articulos")
-    .select("id, codigo_tipo, nombre, categoria, serializado, stock_minimo, puertos_default, activo")
-    .order("categoria")
-    .order("nombre");
+  const [{ data: tipos, error }, { data: categorias }] = await Promise.all([
+    supabase
+      .from("catalogo_articulos")
+      .select(
+        "id, codigo_tipo, nombre, categoria, serializado, stock_minimo, puertos_default, lleva_control, lleva_cables, activo",
+      )
+      .order("categoria")
+      .order("codigo_tipo"),
+    supabase.from("categorias").select("id, nombre, prefijo").eq("activo", true).order("nombre"),
+  ]);
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8">
@@ -31,8 +36,13 @@ export default async function CatalogoPage() {
 
       {esAdmin ? (
         <section className="rounded-2xl border border-foreground/10 p-5">
-          <h2 className="mb-4 font-semibold">Agregar tipo</h2>
-          <TipoForm modo="crear" />
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="font-semibold">Agregar tipo</h2>
+            <Link href="/catalogo/categorias" className="text-sm text-brand hover:underline">
+              Administrar categorías
+            </Link>
+          </div>
+          <TipoForm modo="crear" categorias={categorias ?? []} />
         </section>
       ) : null}
 
@@ -54,7 +64,7 @@ export default async function CatalogoPage() {
                   <th className="px-4 py-2 font-medium">Control</th>
                   <th className="px-4 py-2 text-right font-medium">Mínimo</th>
                   <th className="px-4 py-2 font-medium">Puertos</th>
-                  {esAdmin ? <th className="px-4 py-2" /> : null}
+                  <th className="px-4 py-2" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-foreground/10">
@@ -66,16 +76,33 @@ export default async function CatalogoPage() {
                       {!t.activo ? <span className="ml-2 text-xs text-muted">(inactivo)</span> : null}
                     </td>
                     <td className="px-4 py-2">{t.categoria}</td>
-                    <td className="px-4 py-2">{t.serializado ? "Por pieza" : "Por cantidad"}</td>
+                    <td className="px-4 py-2">
+                      {t.serializado ? "Por pieza" : "Por cantidad"}
+                      {t.lleva_control || t.lleva_cables ? (
+                        <span className="block text-xs text-muted">
+                          +{" "}
+                          {[t.lleva_control ? "control" : null, t.lleva_cables ? "cables" : null]
+                            .filter(Boolean)
+                            .join(" y ")}
+                        </span>
+                      ) : null}
+                    </td>
                     <td className="px-4 py-2 text-right tabular-nums">{t.stock_minimo}</td>
-                    <td className="px-4 py-2 text-muted">{t.puertos_default.join(", ") || "—"}</td>
-                    {esAdmin ? (
-                      <td className="px-4 py-2 text-right">
+                    <td className="px-4 py-2 text-muted">
+                      {t.serializado ? t.puertos_default.join(", ") || "—" : "—"}
+                    </td>
+                    <td className="px-4 py-2 text-right whitespace-nowrap">
+                      {!t.serializado ? (
+                        <Link href={`/stock/${t.id}`} className="mr-4 text-brand hover:underline">
+                          Stock
+                        </Link>
+                      ) : null}
+                      {esAdmin ? (
                         <Link href={`/catalogo/${t.id}`} className="text-brand hover:underline">
                           Editar
                         </Link>
-                      </td>
-                    ) : null}
+                      ) : null}
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -22,6 +22,7 @@ export type EstadoEquipo = {
   ok?: boolean;
   error?: string;
   etiqueta?: string; // etiqueta asignada por la base de datos
+  extras?: string[]; // etiquetas de accesorios (control, cables), si el tipo los trae
   valores?: CamposEquipo;
 };
 
@@ -79,7 +80,7 @@ export async function crearEquipo(_prev: EstadoEquipo, formData: FormData): Prom
       fecha_devolucion: valores.propiedad === "propio" ? null : valores.fecha_devolucion,
       notas: valores.notas || null,
     })
-    .select("etiqueta")
+    .select("etiqueta, etiqueta_control, etiqueta_cables")
     .single();
 
   if (error) {
@@ -99,6 +100,10 @@ export async function crearEquipo(_prev: EstadoEquipo, formData: FormData): Prom
   return {
     ok: true,
     etiqueta: data.etiqueta,
+    extras: [
+      data.etiqueta_control ? `Control: ${data.etiqueta_control}` : null,
+      data.etiqueta_cables ? `Cables: ${data.etiqueta_cables}` : null,
+    ].filter((x): x is string => Boolean(x)),
     valores: { ...valores, serie: "", notas: "" },
   };
 }

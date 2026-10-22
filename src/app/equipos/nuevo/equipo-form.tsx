@@ -32,6 +32,10 @@ export function EquipoForm({ tipos, propietarios }: { tipos: Tipo[]; propietario
       // Tras cada alta cambia la key: se limpia serie y notas, el resto se conserva.
       key={estado.etiqueta ?? "form"}
       action={accion}
+      // React limpia el formulario después de cada envío. Si hubo error eso
+      // desmarcaba las opciones (radio) aunque la pantalla las mostrara elegidas.
+      // Se evita: lo escrito se conserva; tras un alta exitosa la "key" lo limpia.
+      onReset={(e) => e.preventDefault()}
       className="grid gap-4 sm:grid-cols-2"
     >
       {estado.ok && estado.etiqueta ? (
@@ -42,7 +46,9 @@ export function EquipoForm({ tipos, propietarios }: { tipos: Tipo[]; propietario
           <p className="text-sm text-green-500">Equipo registrado. Su etiqueta es:</p>
           <p className="mt-1 font-mono text-2xl font-bold">{estado.etiqueta}</p>
           <p className="mt-1 text-xs text-muted">
-            Caja: {estado.etiqueta}-C · Queda &quot;Por validar&quot; hasta escanear equipo y caja.
+            Caja: {estado.etiqueta}-C
+            {estado.extras?.map((x) => ` · ${x}`).join("")} · Queda &quot;Por validar&quot; hasta
+            escanear equipo y caja.
           </p>
         </div>
       ) : null}

@@ -42,7 +42,12 @@ export function DatosUsuarioForm({
   );
 
   return (
-    <form action={accion} className="grid gap-4 sm:grid-cols-2">
+    <form
+      action={accion}
+      // Evita que React vacíe el formulario tras un error (el rol/tipo volvía al valor inicial).
+      onReset={(e) => e.preventDefault()}
+      className="grid gap-4 sm:grid-cols-2"
+    >
       <label className="flex flex-col gap-1.5">
         <span className="text-sm font-medium">Nombre</span>
         <input name="nombre" required defaultValue={nombre} className={campo} />
@@ -88,9 +93,15 @@ export function ContrasenaForm({ id }: { id: string }) {
   );
 
   return (
-    <form key={estado.n ?? 0} action={accion} className="grid gap-4 sm:grid-cols-2">
+    <form
+      key={estado.n ?? 0}
+      action={accion}
+      // Evita que React vacíe el formulario tras un error (el rol/tipo volvía al valor inicial).
+      onReset={(e) => e.preventDefault()}
+      className="grid gap-4 sm:grid-cols-2"
+    >
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium">Nueva contraseña</span>
+        <span className="text-sm font-medium">Contraseña temporal</span>
         <input
           name="password"
           type="text"
@@ -107,7 +118,7 @@ export function ContrasenaForm({ id }: { id: string }) {
           disabled={pendiente}
           className="h-11 rounded-lg border border-foreground/15 px-5 font-medium hover:border-brand disabled:opacity-60"
         >
-          {pendiente ? "Cambiando…" : "Cambiar contraseña"}
+          {pendiente ? "Guardando…" : "Poner contraseña temporal"}
         </button>
       </div>
       <Aviso estado={estado} />

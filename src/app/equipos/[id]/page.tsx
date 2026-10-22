@@ -11,6 +11,8 @@ type Equipo = {
   id: string;
   etiqueta: string;
   etiqueta_caja: string;
+  etiqueta_control: string | null;
+  etiqueta_cables: string | null;
   marca: string | null;
   modelo: string | null;
   serie: string | null;
@@ -76,6 +78,14 @@ function valorTexto(v: unknown, nombres?: Map<string, string>): string {
   return String(v);
 }
 
+// Traduce valores guardados (ids, claves) al texto que entiende la gente.
+function nombresCampo(campo: string, propietarios: Map<string, string>) {
+  if (campo === "propietario_id") return propietarios;
+  if (campo === "propiedad") return new Map(Object.entries(PROPIEDAD));
+  if (campo === "estado_fisico") return new Map(Object.entries(ESTADO_FISICO));
+  return undefined;
+}
+
 export default async function EquipoPage({ params }: PageProps<"/equipos/[id]">) {
   const usuario = await requireUsuario();
   const esAdmin = usuario.rol === "administrador";
@@ -87,7 +97,7 @@ export default async function EquipoPage({ params }: PageProps<"/equipos/[id]">)
     supabase
       .from("equipos")
       .select(
-        "id, etiqueta, etiqueta_caja, marca, modelo, serie, puertos, estado_fisico, estado_operativo, propiedad, fecha_devolucion, notas, etiquetas_validadas_at, created_at, articulo:catalogo_articulos(codigo_tipo, nombre, categoria), propietario:propietarios(nombre), responsable:usuarios(nombre)",
+        "id, etiqueta, etiqueta_caja, etiqueta_control, etiqueta_cables, marca, modelo, serie, puertos, estado_fisico, estado_operativo, propiedad, fecha_devolucion, notas, etiquetas_validadas_at, created_at, articulo:catalogo_articulos(codigo_tipo, nombre, categoria), propietario:propietarios(nombre), responsable:usuarios(nombre)",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -125,6 +135,8 @@ export default async function EquipoPage({ params }: PageProps<"/equipos/[id]">)
     ["Devolver al propietario", e.fecha_devolucion ?? "—"],
     ["Lo tiene", e.responsable?.nombre ?? "—"],
     ["Caja", e.etiqueta_caja],
+    ...(e.etiqueta_control ? [["Control", e.etiqueta_control] as [string, string]] : []),
+    ...(e.etiqueta_cables ? [["Cables originales", e.etiqueta_cables] as [string, string]] : []),
     ["Etiquetas validadas", e.etiquetas_validadas_at ? fecha(e.etiquetas_validadas_at) : "No"],
     ["Registrado", fecha(e.created_at)],
   ];
@@ -170,7 +182,7 @@ export default async function EquipoPage({ params }: PageProps<"/equipos/[id]">)
           {datos.map(([k, v]) => (
             <div key={k}>
               <dt className="text-xs text-muted">{k}</dt>
-              <dd className={k === "Serie" || k === "Caja" ? "font-mono" : ""}>{v}</dd>
+              <dd className={["Serie", "Caja", "Control", "Cables originales"].includes(k) ? "font-mono" : ""}>{v}</dd>
             </div>
           ))}
         </dl>
@@ -206,8 +218,10 @@ export default async function EquipoPage({ params }: PageProps<"/equipos/[id]">)
                       {cambios.map(([campo, c]) => (
                         <li key={campo}>
                           <span className="text-muted">{NOMBRE_CAMPO[campo] ?? campo}:</span>{" "}
-                          <span className="line-through opacity-60">{valorTexto(c?.antes, nombrePropietario)}</span>{" "}
-                          → {valorTexto(c?.despues, nombrePropietario)}
+                          <span className="line-through opacity-60">
+                            {valorTexto(c?.antes, nombresCampo(campo, nombrePropietario))}
+                          </span>{" "}
+                          → {valorTexto(c?.despues, nombresCampo(campo, nombrePropietario))}
                         </li>
                       ))}
                     </ul>

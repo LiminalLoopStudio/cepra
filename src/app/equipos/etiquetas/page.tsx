@@ -11,18 +11,21 @@ type Pieza = {
   id: string;
   etiqueta: string;
   etiqueta_caja: string;
+  etiqueta_control: string | null;
+  etiqueta_cables: string | null;
   articulo: { nombre: string } | null;
 };
 
 type Etiqueta = {
   codigo: string;
   nombre: string;
-  esCaja: boolean;
+  marca: string | null; // CAJA / CONTROL / CABLES (null = el equipo)
   svg: string;
 };
 
 // Hoja carta tipo Avery 5160: 3 columnas × 10 filas = 30 etiquetas de 2.625" × 1".
-// Por cada pieza se imprimen 2 etiquetas seguidas: equipo y caja.
+// Por cada pieza se imprimen seguidas: equipo, caja y, si el tipo los trae,
+// control (-CTRL) y cables originales (-CBL).
 export default async function EtiquetasPage({
   searchParams,
 }: PageProps<"/equipos/etiquetas">) {
@@ -35,7 +38,9 @@ export default async function EtiquetasPage({
   const supabase = await createClient();
   let consulta = supabase
     .from("equipos")
-    .select("id, etiqueta, etiqueta_caja, articulo:catalogo_articulos(nombre)")
+    .select(
+      "id, etiqueta, etiqueta_caja, etiqueta_control, etiqueta_cables, articulo:catalogo_articulos(nombre)",
+    )
     .order("etiqueta");
 
   if (ids.length > 0) consulta = consulta.in("id", ids);
@@ -49,16 +54,20 @@ export default async function EtiquetasPage({
   const etiquetas: Etiqueta[] = [];
   for (const p of piezas) {
     const nombre = p.articulo?.nombre ?? "";
-    for (const [codigo, esCaja] of [
-      [p.etiqueta, false],
-      [p.etiqueta_caja, true],
-    ] as const) {
+    const juego: [string | null, string | null][] = [
+      [p.etiqueta, null],
+      [p.etiqueta_caja, "CAJA"],
+      [p.etiqueta_control, "CONTROL"],
+      [p.etiqueta_cables, "CABLES"],
+    ];
+    for (const [codigo, marca] of juego) {
+      if (!codigo) continue;
       const svg = await QRCode.toString(codigo, {
         type: "svg",
         margin: 0,
         errorCorrectionLevel: "M",
       });
-      etiquetas.push({ codigo, nombre, esCaja, svg });
+      etiquetas.push({ codigo, nombre, marca, svg });
     }
   }
 
@@ -77,13 +86,15 @@ export default async function EtiquetasPage({
           </Link>
           <h1 className="mt-2 text-2xl font-bold">Imprimir etiquetas</h1>
           <p className="text-sm text-muted">
-            {piezas.length} piezas · {etiquetas.length} etiquetas (equipo +
-            caja) · {hojas} {hojas === 1 ? "hoja" : "hojas"} carta tipo Avery
-            5160
+            {piezas.length} {piezas.length === 1 ? "pieza" : "piezas"} ·{" "}
+            {etiquetas.length} etiquetas (equipo, caja y accesorios) · {hojas}{" "}
+            {hojas === 1 ? "hoja" : "hojas"} carta tipo Avery 5160
           </p>
           <p className="mt-1 text-xs text-muted">
-            Al imprimir: tamaño Carta, márgenes &quot;Ninguno&quot;, escala
-            100%.
+            Al imprimir: tamaño Carta, márgenes &quot;Predeterminados&quot;,
+            escala 100% (sin &quot;Ajustar a la página&quot;). Prueba
+            primero en una hoja normal y ponla encima de la de etiquetas a
+            contraluz.
           </p>
         </div>
         {etiquetas.length > 0 ? <BotonImprimir /> : null}
@@ -104,7 +115,7 @@ export default async function EtiquetasPage({
               <div className="etiqueta-texto">
                 <span className="etiqueta-codigo">{e.codigo}</span>
                 <span className="etiqueta-nombre">{e.nombre}</span>
-                {e.esCaja ? <span className="etiqueta-caja">CAJA</span> : null}
+                {e.marca ? <span className="etiqueta-caja">{e.marca}</span> : null}
               </div>
             </div>
           ))}

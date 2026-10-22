@@ -13,13 +13,21 @@ export default async function EditarTipoPage({ params }: PageProps<"/catalogo/[i
   const { id } = await params;
 
   const supabase = await createClient();
-  const { data: tipo } = await supabase
-    .from("catalogo_articulos")
-    .select("id, codigo_tipo, nombre, categoria, serializado, stock_minimo, puertos_default, activo")
-    .eq("id", id)
-    .maybeSingle();
+  const [{ data: tipo }, { data: categorias }] = await Promise.all([
+    supabase
+      .from("catalogo_articulos")
+      .select(
+        "id, codigo_tipo, nombre, categoria_id, serializado, stock_minimo, puertos_default, lleva_control, lleva_cables, activo",
+      )
+      .eq("id", id)
+      .maybeSingle(),
+    supabase.from("categorias").select("id, nombre, prefijo, activo").order("nombre"),
+  ]);
 
   if (!tipo) notFound();
+
+  // Categorías activas + la actual (aunque esté desactivada).
+  const opciones = (categorias ?? []).filter((c) => c.activo || c.id === tipo.categoria_id);
 
   const alternarActivo = cambiarActivo.bind(null, tipo.id, !tipo.activo);
 
@@ -39,18 +47,23 @@ export default async function EditarTipoPage({ params }: PageProps<"/catalogo/[i
         <TipoForm
           modo="editar"
           id={tipo.id}
+          codigo={tipo.codigo_tipo}
+          categorias={opciones}
           inicial={{
-            codigo_tipo: tipo.codigo_tipo,
             nombre: tipo.nombre,
-            categoria: tipo.categoria,
+            categoria_id: tipo.categoria_id ?? "",
             serializado: tipo.serializado ? "si" : "no",
             stock_minimo: String(tipo.stock_minimo),
             puertos: (tipo.puertos_default as string[]).join(", "),
+            lleva_control: tipo.lleva_control ? "si" : "",
+            lleva_cables: tipo.lleva_cables ? "si" : "",
           }}
         />
         <p className="mt-4 text-xs text-muted">
-          Cambiar el código o el tipo de control está bien mientras no haya piezas registradas
-          de este tipo. Más adelante el sistema lo bloqueará para no descuadrar etiquetas.
+          La categoría (y con ella el código) y la forma de control solo se pueden cambiar
+          mientras el tipo no tenga piezas ni movimientos; si los tiene, el sistema lo rechaza
+          para no descuadrar etiquetas ni inventario. Cambiar &quot;trae control / cables&quot; solo
+          afecta a las piezas que se registren después.
         </p>
       </section>
 

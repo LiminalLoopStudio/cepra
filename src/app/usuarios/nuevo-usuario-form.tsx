@@ -19,7 +19,13 @@ export function NuevoUsuarioForm() {
   const v = estado.ok ? undefined : estado.valores;
 
   return (
-    <form key={estado.n ?? 0} action={accion} className="grid gap-4 sm:grid-cols-2">
+    <form
+      key={estado.n ?? 0}
+      action={accion}
+      // Evita que React vacíe el formulario tras un error (el rol/tipo volvía al valor inicial).
+      onReset={(e) => e.preventDefault()}
+      className="grid gap-4 sm:grid-cols-2"
+    >
       <label className="flex flex-col gap-1.5">
         <span className="text-sm font-medium">Nombre</span>
         <input name="nombre" required defaultValue={v?.nombre} placeholder="Ana López" className={campo} />
@@ -39,7 +45,7 @@ export function NuevoUsuarioForm() {
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium">Contraseña inicial</span>
+        <span className="text-sm font-medium">Contraseña temporal</span>
         <input
           name="password"
           type="text"
@@ -49,7 +55,9 @@ export function NuevoUsuarioForm() {
           placeholder="Mínimo 8 caracteres"
           className={`${campo} font-mono`}
         />
-        <span className="text-xs text-muted">Se la das a la persona; tú puedes cambiarla después.</span>
+        <span className="text-xs text-muted">
+          Se la das a la persona. La primera vez que entre, el sistema le pedirá crear la suya.
+        </span>
       </label>
 
       <label className="flex flex-col gap-1.5">

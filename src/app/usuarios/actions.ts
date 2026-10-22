@@ -62,7 +62,7 @@ export async function crearUsuario(prev: EstadoUsuario, formData: FormData): Pro
   // trigger de la base crea el perfil como "staff". Aquí se fija el rol real.
   const { error: errorRol } = await admin
     .from("usuarios")
-    .update({ rol: valores.rol, nombre: valores.nombre })
+    .update({ rol: valores.rol, nombre: valores.nombre, debe_cambiar_contrasena: true })
     .eq("id", data.user.id);
 
   if (errorRol) {
@@ -76,7 +76,7 @@ export async function crearUsuario(prev: EstadoUsuario, formData: FormData): Pro
   revalidatePath("/usuarios");
   return {
     ok: true,
-    mensaje: `${valores.nombre} creado. Dale su correo y contraseña para entrar.`,
+    mensaje: `${valores.nombre} creado. Dale su correo y la contraseña temporal: al entrar se le pedirá crear la suya.`,
     n: (prev.n ?? 0) + 1,
   };
 }
@@ -113,7 +113,7 @@ export async function actualizarUsuario(
 }
 
 // ---------------------------------------------------------------------------
-// Nueva contraseña (cuando alguien la olvida)
+// Contraseña temporal (cuando alguien la olvida): al entrar deberá cambiarla
 // ---------------------------------------------------------------------------
 export async function cambiarContrasena(
   id: string,
@@ -129,7 +129,15 @@ export async function cambiarContrasena(
   const { error } = await admin.auth.admin.updateUserById(id, { password });
   if (error) return { error: `No se pudo cambiar: ${error.message}` };
 
-  return { ok: true, mensaje: "Contraseña actualizada.", n: Date.now() };
+  await admin.from("usuarios").update({ debe_cambiar_contrasena: true }).eq("id", id);
+  revalidatePath("/usuarios");
+  revalidatePath(`/usuarios/${id}`);
+
+  return {
+    ok: true,
+    mensaje: "Contraseña temporal puesta. Al entrar con ella se le pedirá crear la suya.",
+    n: Date.now(),
+  };
 }
 
 // ---------------------------------------------------------------------------

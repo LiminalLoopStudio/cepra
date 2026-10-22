@@ -6,7 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 export const metadata: Metadata = { title: "Stock" };
 
 export default async function StockPage() {
-  await requireUsuario();
+  const usuario = await requireUsuario();
+  const esAdmin = usuario.rol === "administrador";
 
   const supabase = await createClient();
   const { data: articulos, error } = await supabase
@@ -53,6 +54,7 @@ export default async function StockPage() {
                 <th className="px-4 py-2 text-right font-medium">Prestado</th>
                 <th className="px-4 py-2 text-right font-medium">Total</th>
                 <th className="px-4 py-2 text-right font-medium">Mínimo</th>
+                <th className="px-4 py-2" />
               </tr>
             </thead>
             <tbody className="divide-y divide-foreground/10 tabular-nums">
@@ -74,6 +76,18 @@ export default async function StockPage() {
                     <td className="px-4 py-2 text-right">{a.prestado}</td>
                     <td className="px-4 py-2 text-right text-muted">{a.total}</td>
                     <td className="px-4 py-2 text-right text-muted">{a.stock_minimo}</td>
+                    <td className="px-4 py-2 text-right">
+                      <Link
+                        href={`/stock/${a.articulo_id}`}
+                        className={
+                          esAdmin
+                            ? "rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white"
+                            : "text-brand hover:underline"
+                        }
+                      >
+                        {esAdmin ? "Ajustar" : "Ver"}
+                      </Link>
+                    </td>
                   </tr>
                 );
               })}
