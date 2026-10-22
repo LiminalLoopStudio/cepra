@@ -38,7 +38,13 @@ export const getUsuarioActual = cache(async (): Promise<UsuarioActual | null> =>
 // Para páginas y acciones: exige sesión (y opcionalmente ciertos roles).
 export async function requireUsuario(roles?: Rol[]): Promise<UsuarioActual> {
   const usuario = await getUsuarioActual();
-  if (!usuario) redirect("/login");
+  if (!usuario) {
+    // ¿Hay sesión pero el usuario está desactivado (o sin perfil)? Cerrarla,
+    // si no quedaría rebotando entre "/" y "/login".
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getClaims();
+    redirect(data?.claims?.sub ? "/salir?motivo=inactivo" : "/login");
+  }
   if (roles && !roles.includes(usuario.rol)) redirect("/");
   return usuario;
 }

@@ -12,6 +12,7 @@ const ACCESOS: { href: string; texto: string; roles: Rol[] }[] = [
   { href: "/stock", texto: "Stock", roles: TODOS },
   { href: "/catalogo", texto: "Catálogo", roles: TODOS },
   { href: "/propietarios", texto: "Propietarios", roles: TODOS },
+  { href: "/usuarios", texto: "Usuarios", roles: ["administrador"] },
 ];
 
 export default async function Home() {
