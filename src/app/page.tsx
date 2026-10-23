@@ -9,6 +9,9 @@ import type { Rol } from "@/lib/auth";
 const TODOS: Rol[] = ["administrador", "almacenista", "lider", "staff"];
 
 const ACCESOS: { href: string; texto: string; roles: Rol[] }[] = [
+  { href: "/entregas", texto: "Entregar", roles: ["administrador", "almacenista"] },
+  { href: "/devoluciones", texto: "Recibir", roles: ["administrador", "almacenista"] },
+  { href: "/prestamos", texto: "Préstamos", roles: TODOS },
   { href: "/equipos/validar", texto: "Validar etiquetas", roles: ["administrador", "almacenista"] },
   { href: "/eventos", texto: "Eventos", roles: TODOS },
   { href: "/equipos", texto: "Equipos", roles: TODOS },
@@ -37,6 +40,9 @@ export default async function Home({ searchParams }: PageProps<"/">) {
     zonas.find((z) => z.zona_staff.some((s) => s.usuario_id === usuario.id))?.nombre;
   const soyLider = zonas.some((z) => z.lider_id === usuario.id);
 
+  const { data: firma } = await supabase.rpc("mi_firma");
+  const sinPin = !(firma as { tiene_pin?: boolean } | null)?.tiene_pin;
+
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 text-center">
       <div className="flex size-16 items-center justify-center rounded-2xl bg-brand text-2xl font-bold text-white">
@@ -54,6 +60,15 @@ export default async function Home({ searchParams }: PageProps<"/">) {
       <p className="rounded-full bg-brand/15 px-4 py-1.5 text-sm font-medium text-brand">
         {ROL_ETIQUETA[usuario.rol]}
       </p>
+
+      {sinPin ? (
+        <Link
+          href="/mi-credencial"
+          className="rounded-xl border border-yellow-500/40 bg-yellow-500/10 px-5 py-3 text-sm text-yellow-500 hover:border-yellow-500"
+        >
+          Aún no tienes PIN de firma: créalo para poder recibir equipo →
+        </Link>
+      ) : null}
 
       {evento ? (
         <Link
@@ -81,6 +96,12 @@ export default async function Home({ searchParams }: PageProps<"/">) {
       </nav>
 
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+        <Link
+          href="/mi-credencial"
+          className="rounded-lg border border-foreground/15 px-4 py-2 text-sm text-muted hover:text-foreground"
+        >
+          Mi credencial y PIN
+        </Link>
         <Link
           href="/cambiar-contrasena"
           className="rounded-lg border border-foreground/15 px-4 py-2 text-sm text-muted hover:text-foreground"

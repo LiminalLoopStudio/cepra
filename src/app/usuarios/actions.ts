@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getUsuarioActual, type Rol } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 const ROLES: Rol[] = ["administrador", "almacenista", "lider", "staff"];
 
@@ -153,5 +154,23 @@ export async function cambiarActivoUsuario(id: string, activo: boolean): Promise
   await admin.auth.admin.updateUserById(id, { ban_duration: activo ? "none" : BLOQUEO });
 
   revalidatePath("/usuarios");
+  revalidatePath(`/usuarios/${id}`);
+}
+
+// ---------------------------------------------------------------------------
+// Credencial y PIN (las funciones de la base revisan que sea administrador)
+// ---------------------------------------------------------------------------
+export async function restablecerPin(id: string): Promise<void> {
+  if (!(await exigirAdmin())) return;
+  const supabase = await createClient();
+  await supabase.rpc("admin_restablecer_pin", { p_usuario: id });
+  revalidatePath(`/usuarios/${id}`);
+  revalidatePath("/usuarios");
+}
+
+export async function nuevaCredencial(id: string): Promise<void> {
+  if (!(await exigirAdmin())) return;
+  const supabase = await createClient();
+  await supabase.rpc("admin_nueva_credencial", { p_usuario: id });
   revalidatePath(`/usuarios/${id}`);
 }

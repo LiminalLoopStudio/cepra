@@ -2,7 +2,9 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-export type Rol = "administrador" | "almacenista" | "lider" | "staff";
+import type { Rol } from "./auth-etiquetas";
+
+export { ROL_ETIQUETA, type Rol } from "./auth-etiquetas";
 
 export type UsuarioActual = {
   id: string;
@@ -11,12 +13,6 @@ export type UsuarioActual = {
   debeCambiarContrasena: boolean; // tiene una contraseña temporal puesta por el admin
 };
 
-export const ROL_ETIQUETA: Record<Rol, string> = {
-  administrador: "Administrador",
-  almacenista: "Almacenista",
-  lider: "Líder de zona",
-  staff: "Staff",
-};
 
 // Lee la sesión y el perfil UNA vez por petición (React cache).
 // Devuelve null si no hay sesión, no hay perfil o el usuario está inactivo.

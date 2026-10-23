@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUsuario } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { cambiarActivoUsuario } from "../actions";
+import { cambiarActivoUsuario, nuevaCredencial, restablecerPin } from "../actions";
 import { ContrasenaForm, DatosUsuarioForm } from "./formularios";
 
 export const metadata: Metadata = { title: "Editar usuario" };
@@ -13,18 +13,27 @@ export default async function EditarUsuarioPage({ params }: PageProps<"/usuarios
   const { id } = await params;
 
   const admin = createAdminClient();
-  const [{ data: u }, { data: auth }] = await Promise.all([
+  const [{ data: u }, { data: auth }, { data: firma }] = await Promise.all([
     admin
       .from("usuarios")
       .select("id, nombre, rol, activo, debe_cambiar_contrasena")
       .eq("id", id)
       .maybeSingle(),
     admin.auth.admin.getUserById(id),
+    admin
+      .from("usuario_firma")
+      .select("credencial, pin_hash, pin_bloqueado_hasta, pin_actualizado_at")
+      .eq("usuario_id", id)
+      .maybeSingle(),
   ]);
   if (!u) notFound();
 
   const esYo = u.id === yo.id;
   const alternarActivo = cambiarActivoUsuario.bind(null, u.id, !u.activo);
+  const borrarPin = restablecerPin.bind(null, u.id);
+  const otraCredencial = nuevaCredencial.bind(null, u.id);
+  const tienePin = Boolean(firma?.pin_hash);
+  const bloqueado = firma?.pin_bloqueado_hasta && new Date(firma.pin_bloqueado_hasta) > new Date();
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8">
@@ -53,6 +62,44 @@ export default async function EditarUsuarioPage({ params }: PageProps<"/usuarios
           ) : null}
         </p>
         <ContrasenaForm id={u.id} />
+      </section>
+
+      <section className="rounded-2xl border border-foreground/10 p-5">
+        <h2 className="mb-1 font-semibold">Credencial y PIN</h2>
+        <p className="mb-4 text-sm text-muted">
+          Credencial <span className="font-mono">{firma?.credencial ?? "—"}</span> · PIN{" "}
+          {tienePin ? (bloqueado ? "bloqueado por intentos fallidos" : "configurado") : "sin configurar"}
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <Link
+            href={`/usuarios/credenciales?id=${u.id}`}
+            className="flex h-10 items-center rounded-lg border border-foreground/15 px-4 text-sm font-medium hover:border-brand"
+          >
+            Imprimir credencial
+          </Link>
+          {tienePin ? (
+            <form action={borrarPin}>
+              <button
+                type="submit"
+                className="h-10 rounded-lg border border-foreground/15 px-4 text-sm font-medium hover:border-brand"
+              >
+                Restablecer PIN
+              </button>
+            </form>
+          ) : null}
+          <form action={otraCredencial}>
+            <button
+              type="submit"
+              className="h-10 rounded-lg border border-red-500/40 px-4 text-sm font-medium text-red-500 hover:bg-red-500/10"
+            >
+              Generar credencial nueva
+            </button>
+          </form>
+        </div>
+        <p className="mt-3 text-xs text-muted">
+          Restablecer PIN lo borra: la persona crea uno nuevo en &quot;Mi credencial&quot;. Una credencial nueva
+          invalida la anterior (úsalo si se perdió).
+        </p>
       </section>
 
       {!esYo ? (

@@ -36,7 +36,33 @@ type Movimiento = {
   datos: Record<string, unknown>;
   created_at: string;
   realizado: { nombre: string } | null;
+  origen: { nombre: string } | null;
+  destino: { nombre: string } | null;
 };
+
+// Detalle de una entrega o devolución a partir de sus datos.
+function detallePrestamo(m: Movimiento) {
+  const d = m.datos as Record<string, unknown>;
+  const partes: string[] = [];
+  if (m.tipo === "entrega") {
+    if (m.destino) partes.push(`a ${m.destino.nombre}`);
+    if (d.folio) partes.push(`préstamo #${d.folio}`);
+    if (d.control === true) partes.push("con control");
+    if (d.control === false) partes.push("sin control");
+    if (d.cables === true) partes.push("con cables");
+    if (d.cables === false) partes.push("sin cables");
+  } else if (m.tipo === "devolucion") {
+    if (m.origen) partes.push(`de ${m.origen.nombre}`);
+    if (d.accesorios) {
+      partes.push(`llegan accesorios que faltaban${d.control ? ": control" : ""}${d.cables ? (d.control ? " y cables" : ": cables") : ""}`);
+    } else {
+      if (d.control === false) partes.push("FALTA el control");
+      if (d.cables === false) partes.push("FALTAN los cables");
+      if (d.falla) partes.push("regresó con falla");
+    }
+  }
+  return partes.join(" · ");
+}
 
 const TIPO_MOVIMIENTO: Record<string, string> = {
   alta: "Alta",
@@ -105,7 +131,9 @@ export default async function EquipoPage({ params }: PageProps<"/equipos/[id]">)
     // RLS: administrador/almacenista ven todo; otros roles solo lo que los involucra.
     supabase
       .from("movimientos")
-      .select("id, tipo, nota, datos, created_at, realizado:usuarios!movimientos_realizado_por_fkey(nombre)")
+      .select(
+        "id, tipo, nota, datos, created_at, realizado:usuarios!movimientos_realizado_por_fkey(nombre), origen:usuarios!movimientos_origen_usuario_id_fkey(nombre), destino:usuarios!movimientos_destino_usuario_id_fkey(nombre)",
+      )
       .eq("equipo_id", id)
       .order("created_at", { ascending: false })
       .limit(100),
@@ -253,6 +281,9 @@ export default async function EquipoPage({ params }: PageProps<"/equipos/[id]">)
                       {m.realizado ? ` · ${m.realizado.nombre}` : ""}
                     </span>
                   </div>
+                  {m.tipo === "entrega" || m.tipo === "devolucion" ? (
+                    <p className="text-sm">{detallePrestamo(m)}</p>
+                  ) : null}
                   {m.nota ? <p className="text-sm text-muted">{m.nota}</p> : null}
                   {cambios.length > 0 ? (
                     <ul className="mt-1 text-sm">

@@ -115,3 +115,72 @@ body {
     break-inside: avoid;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Credenciales para imprimir — hoja carta tipo Avery 5371 (tarjeta de
+   presentación): 2 columnas × 5 filas, tarjeta 3.5" × 2".
+   --------------------------------------------------------------------------- */
+.hoja-credenciales {
+  display: grid;
+  grid-template-columns: repeat(2, 3.5in);
+  grid-auto-rows: 2in;
+  width: 7in;
+  margin: 0 auto 2rem;
+  background: #fff;
+  color: #000;
+}
+
+.credencial {
+  display: flex;
+  align-items: center;
+  gap: 0.15in;
+  padding: 0.15in 0.2in;
+  overflow: hidden;
+  outline: 1px dashed #ccc;
+  outline-offset: -1px;
+}
+
+.credencial-qr {
+  width: 1.45in;
+  height: 1.45in;
+  flex-shrink: 0;
+}
+.credencial-qr svg {
+  width: 100%;
+  height: 100%;
+}
+
+.credencial-texto {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2pt;
+  line-height: 1.15;
+}
+.credencial-marca {
+  font-size: 7pt;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+.credencial-nombre {
+  font-size: 13pt;
+  font-weight: 700;
+}
+.credencial-rol {
+  font-size: 9pt;
+}
+.credencial-codigo {
+  margin-top: 4pt;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 8pt;
+}
+
+@media print {
+  .hoja-credenciales {
+    margin: 0;
+  }
+  .credencial {
+    outline: none;
+    break-inside: avoid;
+  }
+}
