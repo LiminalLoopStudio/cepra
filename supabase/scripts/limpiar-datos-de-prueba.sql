@@ -5,7 +5,7 @@
 -- Se pega completa en Supabase → SQL Editor → Run.
 --
 -- BORRA:
---   * Préstamos, entregas y devoluciones, y todo el historial de movimientos.
+--   * Solicitudes, préstamos, entregas y devoluciones, y todo el historial de movimientos.
 --   * Todos los equipos, el stock por cantidad y todos los tipos del catálogo.
 --   * Eventos, zonas y staff asignado.
 --   * Cuentas de plataformas y compras (con el registro de sus archivos).
@@ -32,6 +32,9 @@ alter table public.movimientos disable trigger movimientos_sin_update;
 alter table public.movimientos disable trigger movimientos_sin_truncate;
 
 truncate table
+  public.solicitud_reservas,
+  public.solicitud_items,
+  public.solicitudes,
   public.movimientos,
   public.prestamo_items,
   public.prestamos,
@@ -75,6 +78,7 @@ commit;
 -- plataformas (9) y usuarios (los reales que conservaste).
 -- -----------------------------------------------------------------------------
 select 'movimientos'        as tabla, count(*) from public.movimientos
+union all select 'solicitudes',        count(*) from public.solicitudes
 union all select 'prestamos',          count(*) from public.prestamos
 union all select 'equipos',            count(*) from public.equipos
 union all select 'catalogo_articulos', count(*) from public.catalogo_articulos

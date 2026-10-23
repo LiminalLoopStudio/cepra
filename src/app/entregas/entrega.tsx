@@ -30,6 +30,21 @@ type Pieza = {
 
 type Linea = { articulo_id: string; nombre: string; cantidad: number };
 
+type SolicitudLista = {
+  id: string;
+  folio: number;
+  zona: { nombre: string } | null;
+  items: { articulo_id: string; reservado_cantidad: number; articulo: { nombre: string; serializado: boolean } | null }[];
+  reservas: {
+    equipo: {
+      etiqueta: string;
+      etiqueta_control: string | null;
+      etiqueta_cables: string | null;
+      articulo: { nombre: string } | null;
+    } | null;
+  }[];
+};
+
 type Aviso = { nivel: "ok" | "advertencia" | "error"; texto: string; folio?: number; prestamoId?: string };
 
 const ESTILO = {
@@ -40,7 +55,7 @@ const ESTILO = {
 
 const ESTADO_TEXTO: Record<string, string> = {
   por_validar: "sin validar sus etiquetas",
-  reservado: "reservado",
+  reservado: "apartado para una solicitud",
   prestado: "ya prestado",
   con_falla: "con falla",
   en_reparacion: "en reparación",
@@ -59,6 +74,10 @@ export function Entrega({ evento, stock }: { evento: string; stock: ArticuloCant
   const [notas, setNotas] = useState("");
   const [aviso, setAviso] = useState<Aviso | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  // Solicitudes listas para recoger de quien recibe, y la que se está entregando.
+  const [listas, setListas] = useState<SolicitudLista[]>([]);
+  const [solicitud, setSolicitud] = useState<{ id: string; folio: number } | null>(null);
+  const [apartado, setApartado] = useState<Record<string, number>>({});
 
   function avisar(a: Aviso) {
     sonar(a.nivel);
@@ -71,6 +90,54 @@ export function Entrega({ evento, stock }: { evento: string; stock: ArticuloCant
     setLineas([]);
     setPin("");
     setNotas("");
+    setListas([]);
+    setSolicitud(null);
+    setApartado({});
+  }
+
+  async function buscarSolicitudes(receptorId: string) {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("solicitudes")
+      .select(
+        "id, folio, zona:zonas(nombre), items:solicitud_items(articulo_id, reservado_cantidad, articulo:catalogo_articulos(nombre, serializado)), reservas:solicitud_reservas(equipo:equipos(etiqueta, etiqueta_control, etiqueta_cables, articulo:catalogo_articulos(nombre)))",
+      )
+      .eq("solicitante_id", receptorId)
+      .eq("estado", "lista")
+      .order("folio");
+    setListas((data ?? []) as unknown as SolicitudLista[]);
+  }
+
+  // Carga lo que almacén apartó para la solicitud: piezas y cantidades.
+  function cargarSolicitud(s: SolicitudLista) {
+    if (piezas.length > 0 || lineas.length > 0) {
+      avisar({ nivel: "advertencia", texto: "Quita lo que ya escaneaste antes de cargar una solicitud." });
+      return;
+    }
+    setPiezas(
+      s.reservas
+        .filter((r) => r.equipo)
+        .map((r) => ({
+          etiqueta: r.equipo!.etiqueta,
+          articulo: r.equipo!.articulo?.nombre ?? "",
+          traeControl: Boolean(r.equipo!.etiqueta_control),
+          traeCables: Boolean(r.equipo!.etiqueta_cables),
+          control: Boolean(r.equipo!.etiqueta_control),
+          cables: Boolean(r.equipo!.etiqueta_cables),
+        })),
+    );
+    const porCantidad = s.items.filter((i) => !i.articulo?.serializado && i.reservado_cantidad > 0);
+    setLineas(porCantidad.map((i) => ({ articulo_id: i.articulo_id, nombre: i.articulo?.nombre ?? "", cantidad: i.reservado_cantidad })));
+    setApartado(Object.fromEntries(porCantidad.map((i) => [i.articulo_id, i.reservado_cantidad])));
+    setSolicitud({ id: s.id, folio: s.folio });
+    avisar({ nivel: "ok", texto: `Solicitud ${s.folio} cargada. Revisa y pide el PIN.` });
+  }
+
+  function soltarSolicitud() {
+    setSolicitud(null);
+    setPiezas([]);
+    setLineas([]);
+    setApartado({});
   }
 
   async function onScan(codigo: string) {
@@ -91,6 +158,7 @@ export function Entrega({ evento, stock }: { evento: string; stock: ArticuloCant
       if (!r.activo) return avisar({ nivel: "error", texto: `${r.nombre} está desactivado.` });
       setReceptor(r);
       setAviso(null);
+      void buscarSolicitudes(r.id);
       sonar(r.tiene_pin && !r.bloqueado ? "ok" : "advertencia");
       if (!r.tiene_pin) setAviso({ nivel: "advertencia", texto: `${r.nombre} aún no tiene PIN: debe crearlo en "Mi credencial" para poder firmar.` });
       else if (r.bloqueado) setAviso({ nivel: "advertencia", texto: `El PIN de ${r.nombre} está bloqueado por intentos fallidos.` });
@@ -159,8 +227,9 @@ export function Entrega({ evento, stock }: { evento: string; stock: ArticuloCant
     const n = Number(cantidad);
     if (!a || !Number.isInteger(n) || n <= 0) return;
     const yaLleva = lineas.find((l) => l.articulo_id === a.articulo_id)?.cantidad ?? 0;
-    if (yaLleva + n > a.disponible) {
-      avisar({ nivel: "error", texto: `Solo hay ${a.disponible} ${a.nombre} disponibles.` });
+    const tope = a.disponible + (apartado[a.articulo_id] ?? 0);
+    if (yaLleva + n > tope) {
+      avisar({ nivel: "error", texto: `Solo hay ${tope} ${a.nombre} disponibles.` });
       return;
     }
     setLineas((ls) =>
@@ -181,6 +250,7 @@ export function Entrega({ evento, stock }: { evento: string; stock: ArticuloCant
       p_piezas: piezas.map((p) => ({ etiqueta: p.etiqueta, control: p.control, cables: p.cables })),
       p_cantidades: lineas.map((l) => ({ articulo_id: l.articulo_id, cantidad: l.cantidad })),
       p_notas: notas || null,
+      p_solicitud: solicitud?.id ?? null,
     });
     setOcupado(false);
     setPin("");
@@ -233,6 +303,43 @@ export function Entrega({ evento, stock }: { evento: string; stock: ArticuloCant
             <p className="text-sm text-muted">Esperando la credencial de quien recibe…</p>
           )}
         </section>
+
+        {/* Solicitudes listas para recoger */}
+        {receptor && solicitud ? (
+          <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-green-500/40 bg-green-500/10 p-4 text-sm">
+            <span>
+              Entregando la <span className="font-semibold">solicitud #{solicitud.folio}</span>. Puedes quitar o agregar
+              cosas; lo apartado que no se entregue se libera solo.
+            </span>
+            <button type="button" onClick={soltarSolicitud} className="text-muted underline">
+              No usar la solicitud
+            </button>
+          </section>
+        ) : receptor && listas.length > 0 ? (
+          <section className="flex flex-col gap-2 rounded-2xl border border-green-500/40 bg-green-500/10 p-4 text-sm">
+            <p className="font-semibold">
+              {receptor.nombre} tiene {listas.length === 1 ? "una solicitud lista" : `${listas.length} solicitudes listas`} para
+              recoger
+            </p>
+            {listas.map((l) => (
+              <div key={l.id} className="flex flex-wrap items-center justify-between gap-3">
+                <span>
+                  #{l.folio} · Zona {l.zona?.nombre} · {l.reservas.length} piezas
+                  {l.items.some((i) => !i.articulo?.serializado && i.reservado_cantidad > 0)
+                    ? ` y ${l.items.reduce((t, i) => t + (i.articulo?.serializado ? 0 : i.reservado_cantidad), 0)} por cantidad`
+                    : ""}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => cargarSolicitud(l)}
+                  className="h-9 rounded-lg bg-brand px-4 font-semibold text-white"
+                >
+                  Cargar solicitud
+                </button>
+              </div>
+            ))}
+          </section>
+        ) : null}
 
         {/* Piezas */}
         {receptor ? (

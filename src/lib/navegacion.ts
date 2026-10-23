@@ -4,6 +4,7 @@ import type { Rol } from "./auth-etiquetas";
 
 export type NombreIcono =
   | "inicio"
+  | "solicitudes"
   | "entregar"
   | "recibir"
   | "prestamos"
@@ -41,6 +42,7 @@ export const GRUPOS: Grupo[] = [
   {
     titulo: "Operación",
     modulos: [
+      { href: "/solicitudes", texto: "Solicitudes", descripcion: "Pedir equipo para tu zona", icono: "solicitudes", roles: TODOS },
       { href: "/entregas", texto: "Entregar", descripcion: "Prestar equipo con firma", icono: "entregar", roles: ALMACEN },
       { href: "/devoluciones", texto: "Recibir", descripcion: "Registrar lo que regresa", icono: "recibir", roles: ALMACEN },
       { href: "/prestamos", texto: "Préstamos", descripcion: "Quién tiene qué", icono: "prestamos", roles: TODOS },
@@ -86,7 +88,7 @@ export function accesosRapidos(rol: Rol): { href: string; texto: string; icono: 
     return [inicio, { href: "/entregas", texto: "Entregar", icono: "entregar" }, { href: "/devoluciones", texto: "Recibir", icono: "recibir" }];
   }
   if (rol === "lider") {
-    return [inicio, { href: "/prestamos", texto: "Préstamos", icono: "prestamos" }, { href: "/compras", texto: "Compras", icono: "compras" }];
+    return [inicio, { href: "/solicitudes", texto: "Solicitudes", icono: "solicitudes" }, { href: "/prestamos", texto: "Préstamos", icono: "prestamos" }];
   }
-  return [inicio, { href: "/prestamos", texto: "Préstamos", icono: "prestamos" }, { href: "/mi-credencial", texto: "Credencial", icono: "credencial" }];
+  return [inicio, { href: "/solicitudes", texto: "Pedir", icono: "solicitudes" }, { href: "/prestamos", texto: "Préstamos", icono: "prestamos" }];
 }

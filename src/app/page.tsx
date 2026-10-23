@@ -16,8 +16,19 @@ export default async function Home({ searchParams }: PageProps<"/">) {
   const supabase = await createClient();
   const contar = (q: PromiseLike<{ count: number | null }>) => q.then((r) => r.count ?? 0);
 
-  const [{ data: evento }, { data: firma }, prestados, faltantes, porValidar, conFalla, porFacturar, aMiNombre] =
-    await Promise.all([
+  const [
+    { data: evento },
+    { data: firma },
+    prestados,
+    faltantes,
+    porValidar,
+    conFalla,
+    porFacturar,
+    aMiNombre,
+    porPreparar,
+    pendientesZona,
+    misAbiertas,
+  ] = await Promise.all([
       supabase
         .from("eventos")
         .select("id, nombre, fecha_inicio, fecha_fin, zonas(nombre, lider_id, zona_staff(usuario_id))")
@@ -38,6 +49,16 @@ export default async function Home({ searchParams }: PageProps<"/">) {
           .eq("receptor_id", usuario.id)
           .neq("estado", "devuelto"),
       ),
+      almacen ? contar(supabase.from("solicitudes").select("id", { count: "exact", head: true }).eq("estado", "aprobada")) : 0,
+      // RLS: el líder solo ve las de su zona (y las suyas, que nacen aprobadas).
+      lider ? contar(supabase.from("solicitudes").select("id", { count: "exact", head: true }).eq("estado", "pendiente")) : 0,
+      contar(
+        supabase
+          .from("solicitudes")
+          .select("id", { count: "exact", head: true })
+          .eq("solicitante_id", usuario.id)
+          .in("estado", ["pendiente", "aprobada", "lista"]),
+      ),
     ]);
 
   const zonas = (evento?.zonas ?? []) as { nombre: string; lider_id: string | null; zona_staff: { usuario_id: string }[] }[];
@@ -46,6 +67,9 @@ export default async function Home({ searchParams }: PageProps<"/">) {
   const sinPin = !(firma as { tiene_pin?: boolean } | null)?.tiene_pin;
 
   const indicadores: Indicador[] = [
+    ...(lider ? [{ titulo: "Solicitudes por aprobar", valor: pendientesZona, href: "/solicitudes", tono: "alerta" as const }] : []),
+    ...(almacen ? [{ titulo: "Solicitudes por preparar", valor: porPreparar, href: "/solicitudes", tono: "alerta" as const }] : []),
+    ...(!almacen ? [{ titulo: "Mis solicitudes abiertas", valor: misAbiertas, href: "/solicitudes" }] : []),
     ...(almacen
       ? [
           { titulo: "Equipos prestados", valor: prestados, href: "/prestamos" },
