@@ -4,8 +4,10 @@ import { useActionState } from "react";
 import {
   actualizarEvento,
   actualizarZona,
+  actualizarSeccion,
   asignarStaff,
   cambiarEstadoEvento,
+  crearSeccion,
   crearEvento,
   crearZona,
   type Estado,
@@ -210,10 +212,12 @@ export function AsignarStaffForm({
   zonaId,
   eventoId,
   disponibles,
+  secciones = [],
 }: {
   zonaId: string;
   eventoId: string;
   disponibles: Persona[];
+  secciones?: { id: string; nombre: string }[];
 }) {
   const [estado, accion, pendiente] = useActionState<Estado, FormData>(
     asignarStaff.bind(null, zonaId, eventoId),
@@ -236,8 +240,77 @@ export function AsignarStaffForm({
           </option>
         ))}
       </select>
+      {secciones.length > 0 ? (
+        <select name="seccion_id" defaultValue="" className={`${campoChico} min-w-40 flex-1`} aria-label="Sección">
+          <option value="">Zona general</option>
+          {secciones.map((sec) => (
+            <option key={sec.id} value={sec.id}>
+              {sec.nombre}
+            </option>
+          ))}
+        </select>
+      ) : null}
       <button type="submit" disabled={pendiente} className={botonSecundario}>
         {pendiente ? "…" : "Asignar"}
+      </button>
+      <Aviso estado={estado} className="w-full" />
+    </form>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Secciones
+// ---------------------------------------------------------------------------
+export function NuevaSeccionForm({ zonaId, eventoId, lideres }: { zonaId: string; eventoId: string; lideres: Persona[] }) {
+  const [estado, accion, pendiente] = useActionState<Estado, FormData>(crearSeccion.bind(null, zonaId, eventoId), {});
+  const v = estado.ok ? undefined : estado.valores;
+  return (
+    <form key={estado.n ?? 0} action={accion} onReset={(e) => e.preventDefault()} className="flex flex-wrap items-center gap-2">
+      <input
+        name="nombre"
+        required
+        placeholder="Nueva sección: VR, Xbox, PlayStation…"
+        defaultValue={v?.nombre}
+        aria-label="Nombre de la sección"
+        className={`${campoChico} min-w-44 flex-1`}
+      />
+      <div className="min-w-40 flex-1">
+        <SelectLider lideres={lideres} valor={v?.lider_id} />
+      </div>
+      <button type="submit" disabled={pendiente} className={botonSecundario}>
+        {pendiente ? "…" : "Agregar sección"}
+      </button>
+      <Aviso estado={estado} className="w-full" />
+    </form>
+  );
+}
+
+export function EditarSeccionForm({
+  seccionId,
+  eventoId,
+  nombre,
+  liderId,
+  lideres,
+}: {
+  seccionId: string;
+  eventoId: string;
+  nombre: string;
+  liderId: string | null;
+  lideres: Persona[];
+}) {
+  const [estado, accion, pendiente] = useActionState<Estado, FormData>(
+    actualizarSeccion.bind(null, seccionId, eventoId),
+    {},
+  );
+  const v = estado.valores ?? { nombre, lider_id: liderId ?? "" };
+  return (
+    <form action={accion} onReset={(e) => e.preventDefault()} className="flex flex-wrap items-center gap-2">
+      <input name="nombre" required defaultValue={v.nombre} aria-label="Nombre de la sección" className={`${campoChico} min-w-36 flex-1 font-medium`} />
+      <div className="min-w-36 flex-1">
+        <SelectLider lideres={lideres} valor={v.lider_id} />
+      </div>
+      <button type="submit" disabled={pendiente} className={botonSecundario}>
+        {pendiente ? "…" : "Guardar"}
       </button>
       <Aviso estado={estado} className="w-full" />
     </form>

@@ -10,7 +10,7 @@
 --   2) Cambia la contraseña y el PIN de las cuentas demo (abajo, en "AJUSTA").
 --
 -- CREA (todo con fechas repartidas de oct-2025 a hoy):
---   * 20 usuarios demo @cepra.test: 1 admin, 3 almacén, 6 líderes, 10 staff,
+--   * 21 usuarios demo @cepra.test: 1 admin, 1 coordinación, 3 almacén, 6 líderes, 10 staff,
 --     con contraseña y PIN ya puestos (no piden cambiarla al entrar).
 --   * 20 propietarios, 20 categorías, 20 clasificaciones de cuentas.
 --   * 50 tipos de artículo (23 por pieza, 27 por cantidad) y ~100 piezas
@@ -23,6 +23,9 @@
 --   * 27 solicitudes de equipo en todos sus estados: por aprobar, aprobadas
 --     (algunas ajustadas por el líder), listas con piezas apartadas,
 --     entregadas con firma, rechazadas y canceladas.
+--   * Documento maestro en borrador para "Gamergy México invierno 2026", con
+--     secciones, líderes de sección y equipo de almacén, compra, renta y
+--     patrocinio (listo para cerrarlo y exportarlo en la demo).
 --   * Todo el historial (movimientos) se genera con las mismas funciones
 --     que usa la app.
 --
@@ -55,6 +58,7 @@ declare
 
   v_id      uuid;
   v_admin   uuid;
+  v_coord   uuid;
   a_alm     uuid[] := '{}';
   a_lid     uuid[] := '{}';
   a_staff   uuid[] := '{}';
@@ -126,7 +130,8 @@ begin
       (17, 'Sebastián Luna',       'sebastian.luna',    'staff'),
       (18, 'Ximena Delgado',       'ximena.delgado',    'staff'),
       (19, 'Leonardo Navarro',     'leonardo.navarro',  'staff'),
-      (20, 'Renata Guzmán',        'renata.guzman',     'staff')
+      (20, 'Renata Guzmán',        'renata.guzman',     'staff'),
+      (21, 'Coordinación Demo',    'coordinacion.demo', 'coordinacion')
     ) as u(n, nombre, usuario, rol) order by n
   loop
     v_id := gen_random_uuid();
@@ -151,6 +156,7 @@ begin
 
     case r.rol
       when 'administrador' then v_admin := v_id;
+      when 'coordinacion'  then v_coord := v_id;
       when 'almacenista'   then a_alm   := a_alm || v_id;
       when 'lider'         then a_lid   := a_lid || v_id;
       else                      a_staff := a_staff || v_id;
@@ -267,6 +273,19 @@ begin
       (nombre, categoria, categoria_id, serializado, lleva_control, lleva_cables, stock_minimo, puertos_default)
     values (r.nombre, r.cat, r.cat_id, r.serial, r.ctrl, r.cbl, r.minimo, r.puertos::text[]);
   end loop;
+
+  -- Consumo eléctrico aproximado (W por unidad) para el documento maestro.
+  update public.catalogo_articulos a set consumo_w = v.w
+    from (values
+      ('PlayStation 5', 200), ('PlayStation 5 Pro', 230), ('Xbox Series X', 200), ('Xbox Series S', 90),
+      ('Nintendo Switch 2', 40), ('Nintendo Switch OLED', 18), ('Pantalla 55" 4K', 130), ('Pantalla 43" Full HD', 70),
+      ('Monitor gamer 27" 165 Hz', 45), ('Monitor 24" 144 Hz', 30), ('PC gamer RTX 4070', 550), ('PC gamer RTX 4060', 400),
+      ('Laptop gamer 15"', 230), ('Laptop de registro', 45), ('Meta Quest 3', 20), ('Meta Quest 3S', 20),
+      ('Bocina activa 15"', 650), ('Mezcladora 8 canales', 25), ('Capturadora 4K', 5), ('Cámara para streaming', 3),
+      ('Router WiFi 6', 15), ('Switch 24 puertos', 20), ('Tablet de registro', 10), ('Tira LED RGB 5 m', 24),
+      ('Regulador 1000 VA', 10), ('No-break 1500 VA', 25)
+    ) as v(nombre, w)
+   where a.nombre = v.nombre;
 
   -- ---------------------------------------------------------------- 6) Piezas
   perform pg_temp.como(a_alm[1]);  -- el alta queda a nombre de almacén
@@ -697,6 +716,76 @@ begin
     end if;
   end loop;
 
+  -- ------------------------------------------------ 12c) Documento maestro
+  -- Gamergy México invierno 2026 (planeado): secciones con su líder, staff
+  -- repartido y el equipo de cada lugar. Queda en BORRADOR para la demo.
+  perform pg_temp.como(v_coord);
+  for v_zona in
+    select z.id, z.nombre from public.zonas z where z.evento_id = v_evs[19] order by z.nombre
+  loop
+    if v_zona.nombre = 'Consolas' then
+      insert into public.secciones (zona_id, nombre, lider_id) values
+        (v_zona.id, 'Sección PlayStation', a_lid[1]),
+        (v_zona.id, 'Sección Xbox', a_lid[2]),
+        (v_zona.id, 'Sección Nintendo', null);
+      -- El staff de la zona pasa a las secciones (uno a cada una).
+      update public.zona_staff s set seccion_id = (
+               select sc.id from public.secciones sc where sc.zona_id = v_zona.id
+                order by sc.nombre offset (x.n - 1) % 3 limit 1)
+        from (select usuario_id, row_number() over (order by usuario_id) as n
+                from public.zona_staff where zona_id = v_zona.id) x
+       where s.zona_id = v_zona.id and s.usuario_id = x.usuario_id;
+      insert into public.maestro_items (zona_id, seccion_id, articulo_id, cantidad, origen)
+      select v_zona.id, sc.id, a.id, v.cant, v.origen::public.origen_maestro
+        from (values
+          ('Sección PlayStation', 'PlayStation 5', 6, 'almacen'),
+          ('Sección PlayStation', 'PlayStation 5 Pro', 2, 'almacen'),
+          ('Sección PlayStation', 'Pantalla 43" Full HD', 8, 'almacen'),
+          ('Sección PlayStation', 'Control DualSense extra', 8, 'almacen'),
+          ('Sección Xbox', 'Xbox Series X', 5, 'almacen'),
+          ('Sección Xbox', 'Monitor 24" 144 Hz', 5, 'almacen'),
+          ('Sección Xbox', 'Control Xbox extra', 6, 'almacen'),
+          ('Sección Nintendo', 'Nintendo Switch 2', 4, 'almacen'),
+          ('Sección Nintendo', 'Nintendo Switch 2', 4, 'patrocinio'),
+          ('Sección Nintendo', 'Pantalla 43" Full HD', 4, 'renta')
+        ) as v(seccion, articulo, cant, origen)
+        join public.secciones sc on sc.zona_id = v_zona.id and sc.nombre = v.seccion
+        join public.catalogo_articulos a on a.nombre = v.articulo;
+      insert into public.maestro_items (zona_id, articulo_id, cantidad, origen)
+      select v_zona.id, a.id, v.cant, 'almacen'
+        from (values ('Cable HDMI 2.1 de 2 m', 24), ('Multicontacto 6 tomas', 8), ('Extensión uso rudo 5 m', 6)) as v(articulo, cant)
+        join public.catalogo_articulos a on a.nombre = v.articulo;
+    elsif v_zona.nombre = 'PC Gaming' then
+      insert into public.maestro_items (zona_id, articulo_id, descripcion, cantidad, origen, notas)
+      select v_zona.id, a.id, null, v.cant, v.origen::public.origen_maestro, v.notas
+        from (values
+          ('PC gamer RTX 4070', 6, 'almacen', null),
+          ('PC gamer RTX 4070', 6, 'patrocinio', 'Las presta el patrocinador de hardware'),
+          ('Monitor gamer 27" 165 Hz', 12, 'almacen', null),
+          ('Teclado mecánico', 12, 'almacen', null),
+          ('Mouse gamer', 12, 'almacen', null),
+          ('Diadema gamer', 12, 'almacen', null),
+          ('Silla gamer', 12, 'almacen', null)
+        ) as v(articulo, cant, origen, notas)
+        join public.catalogo_articulos a on a.nombre = v.articulo;
+    elsif v_zona.nombre = 'Realidad virtual' then
+      insert into public.maestro_items (zona_id, articulo_id, cantidad, origen)
+      select v_zona.id, a.id, v.cant, v.origen::public.origen_maestro
+        from (values ('Meta Quest 3', 4, 'almacen'), ('Meta Quest 3S', 4, 'almacen'), ('Pantalla 55" 4K', 2, 'almacen'),
+                     ('Toallitas limpiadoras', 6, 'almacen')) as v(articulo, cant, origen)
+        join public.catalogo_articulos a on a.nombre = v.articulo;
+      insert into public.maestro_items (zona_id, descripcion, cantidad, origen, consumo_w, notas)
+      values (v_zona.id, 'Base para pantalla referencial 45°', 2, 'renta', 0, 'Rentar con proveedor de mobiliario');
+    else
+      insert into public.maestro_items (zona_id, articulo_id, cantidad, origen)
+      select v_zona.id, a.id, v.cant, v.origen::public.origen_maestro
+        from (values ('Bocina activa 15"', 4, 'almacen'), ('Mezcladora 8 canales', 1, 'almacen'),
+                     ('Pantalla 55" 4K', 4, 'almacen'), ('Capturadora 4K', 2, 'almacen'),
+                     ('Cámara para streaming', 2, 'compra'), ('Banner roll-up', 4, 'almacen')) as v(articulo, cant, origen)
+        join public.catalogo_articulos a on a.nombre = v.articulo;
+    end if;
+  end loop;
+
   -- ------------------------------------------- 13) Fechas realistas
   -- Todo lo anterior quedó con la hora de hoy. Se reparte en el tiempo.
   -- La bitácora no deja editar: se apaga su candado solo en esta transacción.
@@ -816,6 +905,8 @@ union all select 'eventos',            count(*) from public.eventos
 union all select 'zonas',              count(*) from public.zonas
 union all select 'zona_staff',         count(*) from public.zona_staff
 union all select 'solicitudes',        count(*) from public.solicitudes
+union all select 'secciones',          count(*) from public.secciones
+union all select 'maestro_items',      count(*) from public.maestro_items
 union all select 'prestamos',          count(*) from public.prestamos
 union all select 'prestamo_items',     count(*) from public.prestamo_items
 union all select 'cuentas',            count(*) from public.cuentas

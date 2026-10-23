@@ -84,7 +84,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 lg:py-8">
       <div>
-        <p className="text-sm text-muted">{ROL_ETIQUETA[usuario.rol]}</p>
+        <p className="text-sm text-muted">{ROL_ETIQUETA[usuario.rolReal]}</p>
         <h1 className="text-2xl font-bold">Hola, {usuario.nombre}</h1>
       </div>
 

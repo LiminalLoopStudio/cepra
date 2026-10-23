@@ -40,7 +40,7 @@ export default async function MiCredencialPage() {
           <p className="text-sm text-red-500">No se encontró tu credencial. Avisa al administrador.</p>
         )}
         <p className="text-lg font-semibold">{usuario.nombre}</p>
-        <p className="text-sm text-muted">{ROL_ETIQUETA[usuario.rol]}</p>
+        <p className="text-sm text-muted">{ROL_ETIQUETA[usuario.rolReal]}</p>
         {firma ? <p className="font-mono text-sm">{firma.credencial}</p> : null}
         <p className="max-w-sm text-xs text-muted">
           Puedes mostrar esta pantalla en el almacén o pedir tu credencial impresa. Si la pierdes, el

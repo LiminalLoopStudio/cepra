@@ -32,7 +32,7 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   // Menú solo con sesión y contraseña definitiva.
   const usuario = await getUsuarioActual();
-  const conMenu = usuario && !usuario.debeCambiarContrasena ? { nombre: usuario.nombre, rol: usuario.rol } : null;
+  const conMenu = usuario && !usuario.debeCambiarContrasena ? { nombre: usuario.nombre, rol: usuario.rol, rolReal: usuario.rolReal } : null;
 
   return (
     <html lang="es-MX" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>

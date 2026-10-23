@@ -5,6 +5,7 @@ import type { Rol } from "./auth-etiquetas";
 export type NombreIcono =
   | "inicio"
   | "solicitudes"
+  | "maestro"
   | "entregar"
   | "recibir"
   | "prestamos"
@@ -61,7 +62,9 @@ export const GRUPOS: Grupo[] = [
   {
     titulo: "Eventos",
     modulos: [
-      { href: "/eventos", texto: "Eventos y zonas", descripcion: "Evento activo, zonas y staff", icono: "eventos", roles: TODOS },
+      { href: "/eventos", texto: "Eventos y zonas", descripcion: "Zonas, secciones y staff", icono: "eventos", roles: TODOS },
+      // "administrador" incluye Coordinación, Project Manager y Stage Manager.
+      { href: "/maestro", texto: "Documento maestro", descripcion: "Equipo por zona y Excel", icono: "maestro", roles: ["administrador", "almacenista", "lider"] },
     ],
   },
   {

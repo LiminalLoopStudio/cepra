@@ -2,14 +2,18 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-import type { Rol } from "./auth-etiquetas";
+import { esRolAdmin, type Rol } from "./auth-etiquetas";
 
-export { ROL_ETIQUETA, type Rol } from "./auth-etiquetas";
+export { esRolAdmin, puedeLiderar, ROL_ETIQUETA, ROLES_ORGANIZACION, type Rol } from "./auth-etiquetas";
 
 export type UsuarioActual = {
   id: string;
   nombre: string;
+  // Para permisos: Coordinación, Project Manager y Stage Manager cuentan como
+  // "administrador" (igual que en la base de datos, es_admin()).
   rol: Rol;
+  // El rol tal cual, para mostrarlo en pantalla.
+  rolReal: Rol;
   debeCambiarContrasena: boolean; // tiene una contraseña temporal puesta por el admin
 };
 
@@ -32,7 +36,8 @@ export const getUsuarioActual = cache(async (): Promise<UsuarioActual | null> =>
   return {
     id: perfil.id,
     nombre: perfil.nombre,
-    rol: perfil.rol as Rol,
+    rol: esRolAdmin(perfil.rol) ? "administrador" : (perfil.rol as Rol),
+    rolReal: perfil.rol as Rol,
     debeCambiarContrasena: Boolean(perfil.debe_cambiar_contrasena),
   };
 });

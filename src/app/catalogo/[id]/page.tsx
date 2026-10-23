@@ -17,7 +17,7 @@ export default async function EditarTipoPage({ params }: PageProps<"/catalogo/[i
     supabase
       .from("catalogo_articulos")
       .select(
-        "id, codigo_tipo, nombre, categoria_id, serializado, stock_minimo, puertos_default, lleva_control, lleva_cables, activo",
+        "id, codigo_tipo, nombre, categoria_id, serializado, stock_minimo, consumo_w, puertos_default, lleva_control, lleva_cables, activo",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -54,6 +54,7 @@ export default async function EditarTipoPage({ params }: PageProps<"/catalogo/[i
             categoria_id: tipo.categoria_id ?? "",
             serializado: tipo.serializado ? "si" : "no",
             stock_minimo: String(tipo.stock_minimo),
+            consumo_w: tipo.consumo_w == null ? "" : String(tipo.consumo_w),
             puertos: (tipo.puertos_default as string[]).join(", "),
             lleva_control: tipo.lleva_control ? "si" : "",
             lleva_cables: tipo.lleva_cables ? "si" : "",

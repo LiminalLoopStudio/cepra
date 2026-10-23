@@ -5,7 +5,7 @@ import { getUsuarioActual, type Rol } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
-const ROLES: Rol[] = ["administrador", "almacenista", "lider", "staff"];
+const ROLES: Rol[] = ["administrador", "coordinacion", "project_manager", "stage_manager", "almacenista", "lider", "staff"];
 
 // Bloqueo de cuenta en Authentication: ~100 años = "desactivado".
 const BLOQUEO = "876000h";
@@ -97,8 +97,8 @@ export async function actualizarUsuario(
   if (!yo) return { error: "Solo el administrador puede editar usuarios." };
   if (!nombre) return { error: "Escribe el nombre." };
   if (!ROLES.includes(rol)) return { error: "Elige un rol." };
-  if (id === yo.id && rol !== "administrador") {
-    return { error: "No puedes quitarte a ti mismo el rol de administrador." };
+  if (id === yo.id && rol !== yo.rolReal) {
+    return { error: "No puedes cambiar tu propio rol." };
   }
 
   const admin = createAdminClient();

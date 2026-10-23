@@ -13,7 +13,9 @@ type Fila = {
   necesita_para: string | null;
   created_at: string;
   solicitante_id: string;
+  origen: string;
   zona: { nombre: string; lider_id: string | null } | null;
+  seccion: { nombre: string; lider_id: string | null } | null;
   evento: { nombre: string } | null;
   solicitante: { nombre: string } | null;
   items: { cantidad: number; articulo: { nombre: string } | null }[];
@@ -29,13 +31,19 @@ function Tarjeta({ s }: { s: Fila }) {
         <span className="font-semibold">
           Solicitud <span className="font-mono">#{s.folio}</span>
         </span>
-        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${COLOR_SOLICITUD[s.estado]}`}>
-          {ESTADO_SOLICITUD[s.estado]}
+        <span className="flex items-center gap-1.5">
+          {s.origen === "maestro" ? (
+            <span className="rounded-full bg-brand/15 px-2.5 py-0.5 text-xs font-medium text-brand">Documento maestro</span>
+          ) : null}
+          <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${COLOR_SOLICITUD[s.estado]}`}>
+            {ESTADO_SOLICITUD[s.estado]}
+          </span>
         </span>
       </span>
       <span className="text-sm">{resumenItems(s.items)}</span>
       <span className="text-xs text-muted">
-        {s.solicitante?.nombre} · Zona {s.zona?.nombre} · {s.evento?.nombre}
+        {s.solicitante?.nombre} · Zona {s.zona?.nombre}
+        {s.seccion ? ` · ${s.seccion.nombre}` : ""} · {s.evento?.nombre}
         {s.necesita_para ? ` · para ${fechaHora(s.necesita_para)}` : ""}
       </span>
     </Link>
@@ -73,7 +81,7 @@ export default async function SolicitudesPage({ searchParams }: PageProps<"/soli
   let consulta = supabase
     .from("solicitudes")
     .select(
-      "id, folio, estado, necesita_para, created_at, solicitante_id, zona:zonas(nombre, lider_id), evento:eventos(nombre), solicitante:usuarios!solicitudes_solicitante_id_fkey(nombre), items:solicitud_items(cantidad, articulo:catalogo_articulos(nombre))",
+      "id, folio, estado, necesita_para, created_at, solicitante_id, origen, zona:zonas(nombre, lider_id), seccion:secciones(nombre, lider_id), evento:eventos(nombre), solicitante:usuarios!solicitudes_solicitante_id_fkey(nombre), items:solicitud_items(cantidad, articulo:catalogo_articulos(nombre))",
     )
     .order("folio", { ascending: false })
     .limit(300);
@@ -81,7 +89,8 @@ export default async function SolicitudesPage({ searchParams }: PageProps<"/soli
   const { data } = await consulta;
   const filas = (data ?? []) as unknown as Fila[];
 
-  const lideraZona = (s: Fila) => admin || s.zona?.lider_id === yo.id;
+  // Aprueba: la organización/admin, el líder de la zona o el de la sección.
+  const lideraZona = (s: Fila) => admin || s.zona?.lider_id === yo.id || s.seccion?.lider_id === yo.id;
   const porAprobar = filas.filter((s) => s.estado === "pendiente" && lideraZona(s));
   const porPreparar = almacen ? filas.filter((s) => s.estado === "aprobada") : [];
   const listas = almacen ? filas.filter((s) => s.estado === "lista") : [];

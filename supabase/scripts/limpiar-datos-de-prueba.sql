@@ -7,7 +7,7 @@
 -- BORRA:
 --   * Solicitudes, préstamos, entregas y devoluciones, y todo el historial de movimientos.
 --   * Todos los equipos, el stock por cantidad y todos los tipos del catálogo.
---   * Eventos, zonas y staff asignado.
+--   * Eventos, zonas, secciones, staff asignado y documentos maestros.
 --   * Cuentas de plataformas y compras (con el registro de sus archivos).
 --   * Empresas propietarias, excepto Gaming Partners.
 --   * Categorías y clasificaciones agregadas a mano (las de fábrica se quedan)
@@ -32,6 +32,8 @@ alter table public.movimientos disable trigger movimientos_sin_update;
 alter table public.movimientos disable trigger movimientos_sin_truncate;
 
 truncate table
+  public.maestro_items,
+  public.maestro,
   public.solicitud_reservas,
   public.solicitud_items,
   public.solicitudes,
@@ -45,6 +47,7 @@ truncate table
   public.stock_cantidad,
   public.catalogo_articulos,
   public.zona_staff,
+  public.secciones,
   public.zonas,
   public.eventos
 restart identity;

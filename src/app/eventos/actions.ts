@@ -108,7 +108,7 @@ export async function cambiarEstadoEvento(id: string, _prev: Estado, formData: F
 }
 
 // ---------------------------------------------------------------------------
-// Zonas (administrador)
+// Zonas (administrador y organización)
 // ---------------------------------------------------------------------------
 export async function crearZona(eventoId: string, prev: Estado, formData: FormData): Promise<Estado> {
   const valores = { nombre: texto(formData, "nombre"), lider_id: texto(formData, "lider_id") };
@@ -163,12 +163,13 @@ export async function asignarStaff(
   formData: FormData,
 ): Promise<Estado> {
   const usuarioId = texto(formData, "usuario_id");
+  const seccionId = texto(formData, "seccion_id");
   if (!usuarioId) return { error: "Elige a la persona." };
 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("zona_staff")
-    .insert({ zona_id: zonaId, usuario_id: usuarioId })
+    .insert({ zona_id: zonaId, usuario_id: usuarioId, seccion_id: seccionId || null })
     .select("usuario_id");
   if (error) return { error: mensajeError(error) };
   if (!data || data.length === 0) return { error: "No tienes permiso para asignar en esta zona." };
@@ -183,4 +184,72 @@ export async function quitarStaff(zonaId: string, usuarioId: string, eventoId: s
   await supabase.from("zona_staff").delete().eq("zona_id", zonaId).eq("usuario_id", usuarioId);
   revalidatePath(`/eventos/${eventoId}`);
   revalidatePath("/");
+}
+
+// Mover a alguien del staff a otra sección de su zona (o a la zona general).
+export async function moverStaff(zonaId: string, usuarioId: string, eventoId: string, formData: FormData): Promise<void> {
+  const seccionId = texto(formData, "seccion_id");
+  const supabase = await createClient();
+  await supabase
+    .from("zona_staff")
+    .update({ seccion_id: seccionId || null })
+    .eq("zona_id", zonaId)
+    .eq("usuario_id", usuarioId);
+  revalidatePath(`/eventos/${eventoId}`);
+}
+
+// ---------------------------------------------------------------------------
+// Secciones de una zona (organización/administrador o el líder de esa zona)
+// ---------------------------------------------------------------------------
+export async function crearSeccion(zonaId: string, eventoId: string, prev: Estado, formData: FormData): Promise<Estado> {
+  const valores = { nombre: texto(formData, "nombre"), lider_id: texto(formData, "lider_id") };
+  if (!valores.nombre) return { error: "Escribe el nombre de la sección.", valores };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("secciones")
+    .insert({ zona_id: zonaId, nombre: valores.nombre, lider_id: valores.lider_id || null })
+    .select("id");
+  if (error) {
+    if (error.code === "23505") return { error: "Ya hay una sección con ese nombre en esta zona.", valores };
+    return { error: mensajeError(error), valores };
+  }
+  if (!data || data.length === 0) return { error: "No tienes permiso para crear secciones aquí.", valores };
+
+  revalidatePath(`/eventos/${eventoId}`);
+  revalidatePath(`/eventos/${eventoId}/maestro`);
+  return { ok: true, mensaje: `Sección "${valores.nombre}" creada.`, n: (prev.n ?? 0) + 1 };
+}
+
+export async function actualizarSeccion(
+  seccionId: string,
+  eventoId: string,
+  _prev: Estado,
+  formData: FormData,
+): Promise<Estado> {
+  const valores = { nombre: texto(formData, "nombre"), lider_id: texto(formData, "lider_id") };
+  if (!valores.nombre) return { error: "Escribe el nombre de la sección.", valores };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("secciones")
+    .update({ nombre: valores.nombre, lider_id: valores.lider_id || null })
+    .eq("id", seccionId)
+    .select("id");
+  if (error) {
+    if (error.code === "23505") return { error: "Ya hay una sección con ese nombre en esta zona.", valores };
+    return { error: mensajeError(error), valores };
+  }
+  if (!data || data.length === 0) return { error: "No tienes permiso para editar esta sección.", valores };
+
+  revalidatePath(`/eventos/${eventoId}`);
+  revalidatePath(`/eventos/${eventoId}/maestro`);
+  return { ok: true, mensaje: "Guardado.", valores };
+}
+
+export async function borrarSeccion(seccionId: string, eventoId: string): Promise<void> {
+  const supabase = await createClient();
+  await supabase.from("secciones").delete().eq("id", seccionId);
+  revalidatePath(`/eventos/${eventoId}`);
+  revalidatePath(`/eventos/${eventoId}/maestro`);
 }

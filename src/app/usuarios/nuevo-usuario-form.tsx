@@ -10,6 +10,9 @@ export const OPCIONES_ROL = [
   ["staff", "Staff — pide equipo y ve lo que tiene a su nombre"],
   ["lider", "Líder de zona — aprueba solicitudes de su zona"],
   ["almacenista", "Almacenista — entrega, recibe y valida etiquetas"],
+  ["coordinacion", "Coordinación — organización: documento maestro, eventos y todo lo del administrador"],
+  ["project_manager", "Project Manager — organización: documento maestro, eventos y todo lo del administrador"],
+  ["stage_manager", "Stage Manager — organización: documento maestro, eventos y todo lo del administrador"],
   ["administrador", "Administrador — todo, incluido inventario y usuarios"],
 ] as const;
 

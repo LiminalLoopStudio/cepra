@@ -24,7 +24,9 @@ type Solicitud = {
   entregado_at: string | null;
   cerrado_at: string | null;
   solicitante_id: string;
+  origen: string;
   zona: { nombre: string; lider_id: string | null } | null;
+  seccion: { nombre: string; lider_id: string | null } | null;
   evento: { id: string; nombre: string } | null;
   solicitante: { nombre: string } | null;
   aprobador: { nombre: string } | null;
@@ -51,8 +53,8 @@ export default async function SolicitudPage({ params, searchParams }: PageProps<
   const { data } = await supabase
     .from("solicitudes")
     .select(
-      `id, folio, estado, necesita_para, notas, motivo, created_at, aprobado_at, ajustado_at, preparado_at, entregado_at, cerrado_at, solicitante_id,
-       zona:zonas(nombre, lider_id), evento:eventos(id, nombre),
+      `id, folio, estado, necesita_para, notas, motivo, created_at, aprobado_at, ajustado_at, preparado_at, entregado_at, cerrado_at, solicitante_id, origen,
+       zona:zonas(nombre, lider_id), seccion:secciones(nombre, lider_id), evento:eventos(id, nombre),
        solicitante:usuarios!solicitudes_solicitante_id_fkey(nombre),
        aprobador:usuarios!solicitudes_aprobado_por_fkey(nombre),
        ajustador:usuarios!solicitudes_ajustado_por_fkey(nombre),
@@ -69,7 +71,7 @@ export default async function SolicitudPage({ params, searchParams }: PageProps<
 
   const admin = yo.rol === "administrador";
   const almacen = admin || yo.rol === "almacenista";
-  const esLider = admin || s.zona?.lider_id === yo.id;
+  const esLider = admin || s.zona?.lider_id === yo.id || s.seccion?.lider_id === yo.id;
   const esMia = s.solicitante_id === yo.id;
   const abierta = s.estado === "pendiente" || s.estado === "aprobada";
 
@@ -125,9 +127,18 @@ export default async function SolicitudPage({ params, searchParams }: PageProps<
           <span className={`rounded-full px-3 py-1 text-sm font-medium ${COLOR_SOLICITUD[s.estado]}`}>
             {ESTADO_SOLICITUD[s.estado]}
           </span>
+          {s.origen === "maestro" ? (
+            <Link
+              href={`/eventos/${s.evento?.id}/maestro`}
+              className="rounded-full bg-brand/15 px-3 py-1 text-sm font-medium text-brand hover:underline"
+            >
+              Del documento maestro
+            </Link>
+          ) : null}
         </div>
         <p className="text-sm text-muted">
-          {s.solicitante?.nombre} · Zona {s.zona?.nombre} · {s.evento?.nombre}
+          {s.solicitante?.nombre} · Zona {s.zona?.nombre}
+          {s.seccion ? ` · ${s.seccion.nombre}` : ""} · {s.evento?.nombre}
           {s.necesita_para ? ` · la necesita para ${fechaHora(s.necesita_para)}` : ""}
         </p>
         {s.notas ? <p className="mt-2 text-sm">{s.notas}</p> : null}
@@ -136,7 +147,7 @@ export default async function SolicitudPage({ params, searchParams }: PageProps<
       {nueva ? (
         <p role="status" className="rounded-xl bg-green-500/15 px-4 py-3 text-sm text-green-500">
           {s.estado === "pendiente"
-            ? "Solicitud enviada. Tu líder de zona la tiene que aprobar."
+            ? "Solicitud enviada. Tu líder la tiene que aprobar."
             : "Solicitud enviada a almacén."}
         </p>
       ) : null}

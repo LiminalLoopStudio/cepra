@@ -97,6 +97,20 @@ export function TipoForm(props: Props) {
         <span className="text-xs text-muted">Avisa cuando haya menos disponibles que esto.</span>
       </label>
 
+      <label className="flex flex-col gap-1.5">
+        <span className="text-sm font-medium">Consumo eléctrico (W por unidad)</span>
+        <input
+          name="consumo_w"
+          type="number"
+          min={0}
+          step={1}
+          placeholder="Ej. 200"
+          defaultValue={v?.consumo_w ?? ""}
+          className={campo}
+        />
+        <span className="text-xs text-muted">Opcional. El documento maestro suma el consumo por zona.</span>
+      </label>
+
       <fieldset className="flex flex-col gap-2 sm:col-span-2">
         <legend className="mb-1.5 text-sm font-medium">¿Cómo se controla?</legend>
         <label className="flex items-start gap-2">

@@ -10,6 +10,7 @@ export type CamposTipo = {
   categoria_id: string;
   serializado: string; // "si" | "no"
   stock_minimo: string;
+  consumo_w: string; // watts por unidad (opcional)
   puertos: string;
   existencia_inicial?: string; // solo al crear un tipo "por cantidad"
   lleva_control?: string; // "si" si cada pieza trae control con etiqueta propia
@@ -29,6 +30,7 @@ type FilaTipo = {
   categoria_id: string;
   serializado: boolean;
   stock_minimo: number;
+  consumo_w: number | null;
   puertos_default: string[];
   lleva_control: boolean;
   lleva_cables: boolean;
@@ -44,6 +46,7 @@ function leerFormulario(
     categoria_id: String(formData.get("categoria_id") ?? ""),
     serializado: String(formData.get("serializado") ?? ""),
     stock_minimo: String(formData.get("stock_minimo") ?? "0").trim(),
+    consumo_w: String(formData.get("consumo_w") ?? "").trim(),
     puertos: String(formData.get("puertos") ?? "").trim(),
     existencia_inicial: String(formData.get("existencia_inicial") ?? "0").trim(),
     lleva_control: formData.get("lleva_control") === "si" ? "si" : "",
@@ -60,6 +63,11 @@ function leerFormulario(
     return { valores, error: "El stock mínimo debe ser un número entero, 0 o mayor." };
   }
 
+  const consumo = valores.consumo_w === "" ? null : Number(valores.consumo_w);
+  if (consumo !== null && (!Number.isInteger(consumo) || consumo < 0 || consumo > 100000)) {
+    return { valores, error: "El consumo debe ser un número entero de watts (0 a 100,000) o quedar vacío." };
+  }
+
   const porPieza = valores.serializado === "si";
   return {
     valores,
@@ -68,6 +76,7 @@ function leerFormulario(
       categoria_id: valores.categoria_id,
       serializado: porPieza,
       stock_minimo: stockMinimo,
+      consumo_w: consumo,
       // Los artículos por cantidad no tienen puertos ni accesorios con etiqueta.
       puertos_default: porPieza
         ? valores.puertos

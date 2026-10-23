@@ -9,6 +9,13 @@ const TRAZOS: Record<NombreIcono, React.ReactNode> = {
       <path d="M10 21v-6h4v6" />
     </>
   ),
+  maestro: (
+    <>
+      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" />
+      <path d="M14 3v5h5" />
+      <path d="M9 13h6M9 17h6M9 9h2" />
+    </>
+  ),
   solicitudes: (
     <>
       <rect x="8" y="2" width="8" height="4" rx="1" />

@@ -8,7 +8,7 @@ import { Icono } from "@/components/icono";
 import { ROL_ETIQUETA, type Rol } from "@/lib/auth-etiquetas";
 import { accesosRapidos, gruposPara } from "@/lib/navegacion";
 
-type Props = { usuario: { nombre: string; rol: Rol } | null; children: React.ReactNode };
+type Props = { usuario: { nombre: string; rol: Rol; rolReal?: Rol } | null; children: React.ReactNode };
 
 // Pantallas sin menú (entrar, contraseña obligatoria).
 const SIN_MENU = ["/login", "/cambiar-contrasena", "/salir"];
@@ -32,7 +32,7 @@ function Marca() {
   );
 }
 
-function Menu({ usuario, pathname, alNavegar }: { usuario: { nombre: string; rol: Rol }; pathname: string; alNavegar?: () => void }) {
+function Menu({ usuario, pathname, alNavegar }: { usuario: { nombre: string; rol: Rol; rolReal?: Rol }; pathname: string; alNavegar?: () => void }) {
   const enlace = (href: string, activoAhora: boolean) =>
     `flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-colors ${
       activoAhora ? "bg-brand/15 font-semibold text-brand" : "text-foreground/80 hover:bg-foreground/5 hover:text-foreground"
@@ -58,7 +58,7 @@ function Menu({ usuario, pathname, alNavegar }: { usuario: { nombre: string; rol
 
       <div className="mt-auto flex flex-col gap-0.5 border-t border-foreground/10 pt-4">
         <p className="px-3 pb-1 text-sm font-semibold">{usuario.nombre}</p>
-        <p className="px-3 pb-2 text-xs text-muted">{ROL_ETIQUETA[usuario.rol]}</p>
+        <p className="px-3 pb-2 text-xs text-muted">{ROL_ETIQUETA[usuario.rolReal ?? usuario.rol]}</p>
         <Link href="/mi-credencial" onClick={alNavegar} className={enlace("/mi-credencial", activo(pathname, "/mi-credencial"))}>
           <Icono nombre="credencial" />
           Mi credencial y PIN
