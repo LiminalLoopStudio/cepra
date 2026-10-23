@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUsuarioActual } from "@/lib/auth";
+import { cerrarSesion } from "@/app/login/actions";
 import { CambiarContrasenaForm } from "./formulario";
 
 export const metadata: Metadata = { title: "Cambiar contraseña" };
@@ -32,9 +33,13 @@ export default async function CambiarContrasenaPage() {
 
         <div className="mt-6 text-sm">
           {temporal ? (
-            <Link href="/salir" className="text-muted hover:text-foreground">
-              Salir sin cambiarla
-            </Link>
+            // Formulario (POST), no <Link>: Next precarga los enlaces y eso
+            // cerraba la sesión sola en cuanto se mostraba esta pantalla.
+            <form action={cerrarSesion}>
+              <button type="submit" className="text-muted hover:text-foreground">
+                Salir sin cambiarla
+              </button>
+            </form>
           ) : (
             <Link href="/" className="text-muted hover:text-foreground">
               ← Volver
