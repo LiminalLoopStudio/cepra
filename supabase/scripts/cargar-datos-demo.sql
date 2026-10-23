@@ -20,6 +20,9 @@
 --     accesorios que llegaron después, piezas con falla y una en reparación).
 --     El evento activo queda con equipo prestado.
 --   * 25 cuentas de plataformas y 25 compras.
+--   * 27 solicitudes de equipo en todos sus estados: por aprobar, aprobadas
+--     (algunas ajustadas por el líder), listas con piezas apartadas,
+--     entregadas con firma, rechazadas y canceladas.
 --   * Todo el historial (movimientos) se genera con las mismas funciones
 --     que usa la app.
 --
@@ -76,6 +79,13 @@ declare
   v_zonas   text[] := array['Consolas', 'PC Gaming', 'Realidad virtual', 'Escenario / torneo', 'Registro'];
   v_plat    uuid;
   v_cuenta  uuid;
+  v_plan    record;
+  v_zona    record;
+  v_quien   uuid;
+  v_sid     uuid;
+  v_itemsj  jsonb;
+  v_pz      jsonb;
+  v_cq      jsonb;
 begin
   -- ---------------------------------------------------------------- Revisiones
   if c_pass = 'CAMBIA-ESTA-CONTRASENA' or length(c_pass) < 8 then
@@ -587,6 +597,106 @@ begin
           'no_facturable', 'Pedido cancelado por el proveedor');
   update public.compras set activo = false where concepto = 'Monitor 27" (cancelado)';
 
+  -- ------------------------------------------------------ 12b) Solicitudes
+  -- Plan: evento (posición), zona (posición), quién pide (s1/s2 = staff, l = líder)
+  -- y en qué estado debe terminar. El evento 18 es el activo; 19 y 20, planeados.
+  for v_plan in
+    select * from (values
+      (18, 1, 's1', 'pendiente'),  (18, 1, 's2', 'lista_ajustada'), (18, 1, 'l', 'entregada'),
+      (18, 2, 's1', 'rechazada'),  (18, 2, 's2', 'aprobada'),       (18, 2, 'l', 'lista'),
+      (18, 3, 's1', 'cancelada'),  (18, 3, 's2', 'entregada'),      (18, 3, 'l', 'aprobada'),
+      (19, 1, 's1', 'pendiente'),  (19, 1, 's2', 'aprobada_ajustada'), (19, 1, 'l', 'aprobada'),
+      (19, 2, 's1', 'pendiente'),  (19, 2, 's2', 'pendiente'),      (19, 2, 'l', 'aprobada'),
+      (19, 3, 's1', 'pendiente'),  (19, 3, 's2', 'aprobada_ajustada'), (19, 3, 'l', 'aprobada'),
+      (19, 4, 's1', 'pendiente'),  (19, 4, 's2', 'pendiente'),      (19, 4, 'l', 'aprobada'),
+      (20, 1, 's1', 'pendiente'),  (20, 1, 'l', 'aprobada'),
+      (20, 2, 's1', 'pendiente'),  (20, 2, 'l', 'aprobada'),
+      (20, 3, 's1', 'pendiente'),  (20, 3, 'l', 'aprobada')
+    ) as t(ev, zk, quien, destino)
+  loop
+    select z.id, z.lider_id into v_zona
+      from public.zonas z where z.evento_id = v_evs[v_plan.ev]
+     order by z.nombre offset v_plan.zk - 1 limit 1;
+    v_quien := case v_plan.quien
+                 when 'l' then v_zona.lider_id
+                 else (select usuario_id from public.zona_staff where zona_id = v_zona.id
+                        order by usuario_id offset case v_plan.quien when 's1' then 0 else 1 end limit 1)
+               end;
+
+    -- Qué pide: 1-2 tipos por pieza con disponibles y 1-2 por cantidad con existencias.
+    select jsonb_agg(jsonb_build_object('articulo_id', x.id, 'cantidad', x.cant)) into v_itemsj from (
+      (select a.id, 1 + (random() > 0.6)::int as cant
+         from public.catalogo_articulos a
+        where a.serializado
+          and (select count(*) from public.equipos e where e.articulo_id = a.id and e.estado_operativo = 'disponible') >= 2
+        order by random() limit 1 + (random() > 0.5)::int)
+      union all
+      (select st.articulo_id, 2 + (random() * 3)::int
+         from public.stock_cantidad st
+        where st.total - st.reservado - public.stock_prestado(st.articulo_id) >= 8
+        order by random() limit 1 + (random() > 0.5)::int)) x;
+
+    perform pg_temp.como(v_quien);
+    v_res := public.crear_solicitud(v_zona.id, v_itemsj,
+               case when random() < 0.5 then now() + interval '1 day' end,
+               case when random() < 0.4 then 'Para la estación ' || (1 + (random() * 8)::int) end);
+    if not (v_res ->> 'ok')::boolean then
+      raise exception 'Solicitud falló: %', v_res ->> 'mensaje';
+    end if;
+    v_sid := (v_res ->> 'id')::uuid;
+
+    -- Líder: ajusta (sube 1 al primer renglón) y aprueba, rechaza o solo aprueba.
+    perform pg_temp.como(v_zona.lider_id);
+    if v_plan.destino in ('lista_ajustada', 'aprobada_ajustada') then
+      select jsonb_agg(case when n = 1 then jsonb_set(e, '{cantidad}', to_jsonb((e ->> 'cantidad')::int + 1)) else e end)
+        into v_itemsj from jsonb_array_elements(v_itemsj) with ordinality as t(e, n);
+      v_res := public.ajustar_solicitud(v_sid, v_itemsj, null, 'Ajustada por el líder de zona');
+    end if;
+    if v_plan.quien <> 'l' and v_plan.destino in ('aprobada', 'aprobada_ajustada', 'lista', 'lista_ajustada', 'entregada') then
+      v_res := public.aprobar_solicitud(v_sid);
+    elsif v_plan.destino = 'rechazada' then
+      v_res := public.rechazar_solicitud(v_sid, 'Tu zona ya tiene suficiente equipo para hoy');
+    elsif v_plan.destino = 'cancelada' then
+      perform pg_temp.como(v_quien);
+      v_res := public.cancelar_solicitud(v_sid, 'Ya no se necesita');
+    end if;
+    if not (v_res ->> 'ok')::boolean then
+      raise exception 'Paso de solicitud falló: %', v_res ->> 'mensaje';
+    end if;
+
+    -- Almacén aparta piezas y cantidades.
+    if v_plan.destino in ('lista', 'lista_ajustada', 'entregada') then
+      perform pg_temp.como(a_alm[1 + (v_plan.zk % 3)]);
+      select coalesce(jsonb_agg(e.etiqueta), '[]') into v_pz
+        from public.solicitud_items i
+        join lateral (select eq.etiqueta from public.equipos eq
+                       where eq.articulo_id = i.articulo_id and eq.estado_operativo = 'disponible'
+                       order by random() limit i.cantidad) e on true
+       where i.solicitud_id = v_sid;
+      select coalesce(jsonb_agg(jsonb_build_object('item_id', i.id, 'cantidad',
+               least(i.cantidad, st.total - st.reservado - public.stock_prestado(st.articulo_id)))), '[]')
+        into v_cq
+        from public.solicitud_items i join public.stock_cantidad st on st.articulo_id = i.articulo_id
+       where i.solicitud_id = v_sid;
+      v_res := public.preparar_solicitud(v_sid, v_pz, v_cq);
+      if not (v_res ->> 'ok')::boolean then
+        raise exception 'Preparar falló: %', v_res ->> 'mensaje';
+      end if;
+    end if;
+
+    -- Entrega con la solicitud, firmada con PIN.
+    if v_plan.destino = 'entregada' then
+      select coalesce(jsonb_agg(jsonb_build_object('etiqueta', e.etiqueta)), '[]') into v_pz
+        from public.solicitud_reservas rs join public.equipos e on e.id = rs.equipo_id where rs.solicitud_id = v_sid;
+      select coalesce(jsonb_agg(jsonb_build_object('articulo_id', articulo_id, 'cantidad', reservado_cantidad)), '[]') into v_cq
+        from public.solicitud_items where solicitud_id = v_sid and reservado_cantidad > 0;
+      v_res := public.registrar_entrega(v_quien, c_pin, v_pz, v_cq, null, v_sid);
+      if not (v_res ->> 'ok')::boolean then
+        raise exception 'Entrega de solicitud falló: %', v_res ->> 'mensaje';
+      end if;
+    end if;
+  end loop;
+
   -- ------------------------------------------- 13) Fechas realistas
   -- Todo lo anterior quedó con la hora de hoy. Se reparte en el tiempo.
   -- La bitácora no deja editar: se apaga su candado solo en esta transacción.
@@ -666,6 +776,23 @@ begin
                             updated_at = timestamptz '2025-10-28 10:00-06' + (random() * 30) * interval '1 day';
   update public.compras set created_at = fecha + time '10:30', updated_at = fecha + time '10:30';
 
+  -- Solicitudes: se piden 1-3 días antes del evento (o hace unos días si es futuro).
+  update public.solicitudes s set
+         created_at = x.t,
+         ajustado_at = case when s.ajustado_at is not null then x.t + interval '1 hour' end,
+         aprobado_at = case when s.aprobado_at is null then null
+                            when s.aprobado_at = s.created_at then x.t
+                            else x.t + interval '2 hours' end,
+         cerrado_at = case when s.cerrado_at is not null then x.t + interval '3 hours' end,
+         preparado_at = case when s.preparado_at is not null then x.t + interval '20 hours' end
+    from (select s2.id,
+                 (least(e.fecha_inicio - 2, current_date - 2) + time '10:00') at time zone 'America/Mexico_City'
+                   + (s2.folio % 7) * interval '47 minutes' as t
+            from public.solicitudes s2 join public.eventos e on e.id = s2.evento_id) x
+   where x.id = s.id;
+  update public.solicitudes s set entregado_at = p.created_at
+    from public.prestamos p where p.id = s.prestamo_id;
+
   execute 'alter table public.movimientos enable trigger movimientos_sin_update';
   execute 'alter table public.equipos enable trigger equipos_bitacora';
 
@@ -688,6 +815,7 @@ union all select 'stock_cantidad',     count(*) from public.stock_cantidad
 union all select 'eventos',            count(*) from public.eventos
 union all select 'zonas',              count(*) from public.zonas
 union all select 'zona_staff',         count(*) from public.zona_staff
+union all select 'solicitudes',        count(*) from public.solicitudes
 union all select 'prestamos',          count(*) from public.prestamos
 union all select 'prestamo_items',     count(*) from public.prestamo_items
 union all select 'cuentas',            count(*) from public.cuentas
