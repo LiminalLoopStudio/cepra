@@ -12,6 +12,8 @@ FROM node:22-bookworm-slim AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# La carpeta public/ puede no existir en el repo (git no guarda carpetas vacías).
+RUN mkdir -p public
 # Las variables NEXT_PUBLIC_ se "hornean" en el código del navegador al compilar.
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
