@@ -1,0 +1,14 @@
+# CEPRA en el mini PC de ShadowLimit. Las variables salen del archivo .env
+# de esta carpeta (en el servidor; nunca se sube a git).
+services:
+  cepra:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+    env_file: .env
+    # Solo escucha en la IP del túnel WireGuard: no queda expuesto en la red de casa.
+    ports:
+      - "10.10.10.2:3000:3000"
+    restart: unless-stopped

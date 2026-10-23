@@ -375,7 +375,7 @@ export function Entrega({ evento, stock }: { evento: string; stock: ArticuloCant
           placeholder="PIN de quien recibe"
           disabled={!receptor || total === 0}
           aria-label="PIN de quien recibe"
-          className="h-14 w-full rounded-xl border-2 border-foreground/15 bg-background px-4 text-center font-mono text-2xl tracking-[0.5em] outline-none focus:border-brand disabled:opacity-50"
+          className="h-14 w-full rounded-xl border-2 border-foreground/15 bg-background px-4 text-center font-mono text-2xl tracking-[0.5em] outline-none placeholder:font-sans placeholder:text-base placeholder:tracking-normal focus:border-brand disabled:opacity-50"
         />
         <button
           type="button"
