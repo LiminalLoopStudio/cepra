@@ -53,7 +53,7 @@ declare
                               'Flores','Gómez','Morales','Vázquez','Reyes','Jiménez','Torres','Díaz','Ruiz','Mendoza'];
 begin
   -- -------------------------------------------------------------- Revisiones
-  if c_pass = 'CAMBIA-ESTA-CONTRASENA' or length(c_pass) < 8 then
+  if c_pass = 'CAMBIA-ESTA-' || 'CONTRASENA' or length(c_pass) < 8 then
     raise exception 'Primero cambia c_pass (mínimo 8 caracteres)';
   end if;
   select id into v_admin from auth.users where lower(email) = lower(trim(c_admin_email));

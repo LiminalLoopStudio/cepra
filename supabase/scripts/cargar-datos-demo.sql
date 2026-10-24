@@ -92,7 +92,7 @@ declare
   v_cq      jsonb;
 begin
   -- ---------------------------------------------------------------- Revisiones
-  if c_pass = 'CAMBIA-ESTA-CONTRASENA' or length(c_pass) < 8 then
+  if c_pass = 'CAMBIA-ESTA-' || 'CONTRASENA' or length(c_pass) < 8 then
     raise exception 'Primero cambia c_pass (contraseña de las cuentas demo, mínimo 8 caracteres) al inicio del script';
   end if;
   if c_pin !~ '^[0-9]{4,6}$' then
